@@ -8,11 +8,20 @@ void raler(const char* msg, int sys_error)
 		perror(msg);
 	else
 		fprintf(stderr, "Erreur : %s\n", msg);
+	
+	if (fflush(stderr) == EOF)
+		raler("fflush", 1);
 	exit(EXIT_FAILURE);
 }
 
-/** Affiche le message passé en paramètre par msg, l'affiche se fait en 
-fonction du niveau du message qui est passé en paramètre */
+/** Affiche un message de debugage immédiatement.
+
+	/!\ COMMENTAIRE A COMPLETER /!\
+	
+	\param niveau Le niveau du message de debugage.
+    \param msg Le message à afficher.
+    \returns Cette fonction ne renvoie rien.
+*/
 void print_debug(int niveau, char *msg)
 {
 	char *var_env_ptr;
@@ -24,14 +33,60 @@ void print_debug(int niveau, char *msg)
 	if ((var_env_value = atoi(var_env_ptr)) == 0)
 		return;
 
-	if(niveau > 1 && niveau > var_env_value)
-		return;
+	//if(niveau > 1 && niveau > var_env_value)
+	//	return;
+	(void) niveau;
 
-	printf("%s\n", msg);
-	if(fflush(stdout) == EOF)
-		raler("fflush");
+	printf("-------%s\n", msg);
+	if (fflush(stdout) == EOF)
+		raler("fflush", 1);
 
 	return;
 }
+
+/** Projection en mémoire du segment de mémoire partagée.
+
+    Le segment de nom #NOM_RESTAURANT est projeté en mémoire, et devient
+    accessible en lecture/écriture via le pointeur fourni en valeur de
+    retour. Le segment est partagé avec tous les autres processus qui
+    le projettent également en mémoire.
+
+    \returns L'adresse du segment existant, projeté en mémoire
+*/
+struct restaurant *restaurant_map()
+{
+	struct stat shared_file;
+	struct restaurant* m_rest;
+	int fd;
+
+    if ((fd = shm_open(NOM_RESTAURANT, O_RDWR , 0666)) == -1)
+        raler("ouverture segment", 1);
+
+    if (fstat(fd, &shared_file) == -1)
+        raler("fstat", 1);
+
+    if ((m_rest = mmap(NULL, shared_file.st_size, PROT_READ | PROT_WRITE, 
+        MAP_SHARED, fd, 0)) == MAP_FAILED)
+        raler("mmap", 1);
+
+    return m_rest;
+}
+
+/** Suppression de la projection en mémoire du segment de mémoire partagée.
+
+    Après appel de cette fonction, le segment de mémoire n'est plus
+    accessible. Le contenu du segment n'est pas affecté par un appel à
+    cette fonction.
+
+    \param restaurant L'adresse du début de la projection 
+    \returns Cette fonction ne renvoie rien.
+*/
+void restaurant_unmap(struct restaurant * restaurant)
+{
+	if (munmap(restaurant, restaurant -> taille) == -1)
+		raler("munmap", 1);
+	return;
+}
+
 
 #endif

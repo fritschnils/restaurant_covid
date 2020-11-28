@@ -3,11 +3,23 @@
 
 int main(int argc, char const *argv[])
 {
+	struct restaurant *m_rest;
+
 	(void) argv;
 	if (argc != 1){
 		fprintf (stderr, "usage: %s\n", argv[0]);
 		return EXIT_FAILURE;
 	}
+
+	m_rest = restaurant_map();
+
+
+
+	if (sem_post(&m_rest -> couvre_feu) == -1)
+		raler("sem_wait couvre_feu", 1);
+
+	restaurant_unmap(m_rest);
+
 
 	return EXIT_SUCCESS;
 }
