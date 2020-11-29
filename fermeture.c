@@ -10,17 +10,34 @@ int main(int argc, char const *argv[])
 		fprintf (stderr, "usage: %s\n", argv[0]);
 		return EXIT_FAILURE;
 	}
+	// FIN TESTS ARGS --------------------------------------------------------
+	
 
 	m_rest = restaurant_map();
 
 
+	if (sem_wait(&m_rest -> crit_ouvert) == -1)
+		raler("sem_wait crit_ouvert", 1);
+
+	if (!(m_rest -> ouvert))
+	{
+		if (sem_post(&m_rest -> crit_ouvert) == -1)
+			raler("sem_post crit_ouvert", 1);
+		restaurant_unmap(m_rest);
+		raler("fermeture alors que restaurant fermé", 0);
+	}
+
+	if (sem_post(&m_rest -> crit_ouvert) == -1)
+		raler("sem_post crit_ouvert", 1);
 
 	if (sem_post(&m_rest -> couvre_feu) == -1)
-		raler("sem_wait couvre_feu", 1);
+		raler("sem_post crit_ouvert", 1);
+
+
+
+
 
 	restaurant_unmap(m_rest);
-
-
 	return EXIT_SUCCESS;
 }
 
