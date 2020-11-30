@@ -173,7 +173,7 @@ void ouverture_fermeture_restaurant(int mode)
 	restaurant_unmap(restaurant);
 }
 
-void lancer_chrono(struct timespec chrono, int indice, int nb_conv, int *oebatar)
+void lancer_chrono(struct timespec chrono, int indice, int nb_conv)
 {
 	sem_t faux_sem;
 	struct restaurant *restaurant = restaurant_map();
@@ -181,6 +181,7 @@ void lancer_chrono(struct timespec chrono, int indice, int nb_conv, int *oebatar
 	if (sem_init(&faux_sem, 0, 0) == -1)
 		raler("sem_init faux_sem", 1);
 
+    printf("EST CE QUE LE CLIENT ATTEND DEJA ?\n");
 	if (sem_timedwait(&faux_sem, &chrono) == -1)
 		if (errno != ETIMEDOUT)
 			raler("timedwait", 1);
@@ -189,7 +190,7 @@ void lancer_chrono(struct timespec chrono, int indice, int nb_conv, int *oebatar
 	{
 		if (sem_post(&restaurant -> signal_depart_fin[indice]) == -1)
 			raler("sem_post signal_depart_fin", 1);
-		oebatar--;
+        printf("JE TEJ CONVIVE %d\n", i);
 	}
 
 	if (sem_destroy(&faux_sem) == -1)
@@ -211,13 +212,14 @@ void affiche_salle(struct table *salle, int nb_table)
 		}
 		printf("\n");
 	}
+    printf("---------------------------------------------------------\n");
 }
 
 int main(int argc, char *argv[])
 {
 	int nb_table = 0, test_convive = 0, test_couvrefeu = 0, test_police = 0;
 	int tmp, demarrer_table, nb_groupes_servis = 0, nb_convives_servis = 0;
-	int taille_tmp;
+	int taille_tmp, refouler = 0;
 	long int duree_service = 0, *tailles_tables;
 	char *endptr, *str;
 	struct restaurant *m_rest;
@@ -287,7 +289,6 @@ int main(int argc, char *argv[])
 	/**************************************************************************
 	 *							INITIALISATION		 						  *
 	 *************************************************************************/	
-
 	chrono.tv_sec = 0;
 	chrono.tv_nsec = 1000000 * duree_service;
 
@@ -300,6 +301,7 @@ int main(int argc, char *argv[])
 	{
 		salle[i].taille = tailles_tables[i];
 		salle[i].nb_conv = 0;
+        salle[i].nb_conv_attendus = 0;
 		salle[i].liste_conv = malloc(salle[i].taille * sizeof(char*));
 		if (salle[i].liste_conv == NULL)
 			raler("malloc listes noms", 1);
@@ -329,7 +331,6 @@ int main(int argc, char *argv[])
 		/**********************************************************************
 		 *						CHECK CONVIVE ATTEND						  *
 		 *********************************************************************/
-		print_debug(1, "convive ?");
 		if (sem_getvalue(&m_rest -> serveur_dispo, &test_convive) == -1)
 			raler("sem_getvalue", 1);
 
@@ -352,7 +353,7 @@ int main(int argc, char *argv[])
 			taille_tmp = 7;
 			demarrer_table = 0;
 			// si c'est un chef cherche la table qui va bien
-			if (m_rest -> req_conv.taille_grp != -1)
+			if ((m_rest -> req_conv.taille_grp != -1) && !refouler)
 			{
 				printf("C'EST LE CHEF\n");
 				for (int i = 0; i < nb_table; i++)
@@ -372,12 +373,13 @@ int main(int argc, char *argv[])
 							, m_rest -> req_conv.nom_convive, 10);
 					salle[tmp].liste_conv[0][10] = '\0'; // sécurité
 					salle[tmp].nb_conv ++;
+                    salle[tmp].nb_conv_attendus = m_rest -> req_conv.taille_grp;
 					//ECRIRE AUSSI DANS LE CAHIER DE RAPPEL
 				}
 			}
 
 			// si c'est pas un chef, cherche la table du chef
-			else
+			else if (!refouler)
 			{
 				printf("C'EST PAS LE CHEF\n");
 				for (int i = 0; i < nb_table; i++)
@@ -385,7 +387,8 @@ int main(int argc, char *argv[])
 					if (strncmp(salle[i].liste_conv[0]
 							, m_rest -> req_conv.nom_chef, 10) == 0)
 					{
-						if (salle[i].nb_conv == salle[i].taille)
+						if (salle[i].nb_conv == salle[i].taille
+                            || salle[i].nb_conv == salle[i].nb_conv_attendus)
 							tmp = -1;
 						else
 							tmp = i;
@@ -405,13 +408,13 @@ int main(int argc, char *argv[])
 			}
 
 			// pas de table -> refouler
-			if (tmp == -1)
+			if ((tmp == -1 )|| refouler)
 				m_rest -> reponse_serv = -1;
 			// sinon -> donner indice de la table
 			else
 			{
 				m_rest -> reponse_serv = tmp; 
-				if (salle[tmp].nb_conv == salle[tmp].taille)
+				if (salle[tmp].nb_conv == salle[tmp].nb_conv_attendus)
 					demarrer_table = 1;
 			}
 			printf("JE RENVOIE %d AU CLIENT\n", tmp);
@@ -425,30 +428,29 @@ int main(int argc, char *argv[])
 			if (sem_wait(&m_rest -> ack_convive) == -1)
 				raler("sem_wait ack_convive", 1);
 			
-			int oebatar = 1;
+			//int oebatar = 1;
 			if (demarrer_table)
 			{
 				nb_groupes_servis++;
 	 			nb_convives_servis += salle[tmp].nb_conv;
 				printf("JE DEMARRE TABLE\n");
- 				switch(fork())
- 				{
- 					case -1 :
- 						raler("fork", 1);
- 						break;
- 					case 0 :
- 						lancer_chrono(chrono, tmp, salle[tmp].nb_conv, &oebatar);
- 						break;
- 				}
+    			switch(fork())
+    			{
+    				case -1 :
+    					raler("fork", 1);
+    					break;
+    				case 0 :
+    					lancer_chrono(chrono, tmp, salle[tmp].nb_conv);
+    					break;
+    			}
  			}	
- 			printf("oebatar : %d\n", oebatar);	
+ 			//printf("oebatar : %d\n", oebatar);	
  			affiche_salle(salle, nb_table);
 		}
 
 		/**********************************************************************
 		 *						CHECK CONTROLE POLICE						  *
 		 *********************************************************************/
-		print_debug(1, "police ?");
 		if (sem_getvalue(&m_rest -> police_presente, &test_police) == -1)
 			raler("sem_getvalue", 1);
 
@@ -462,7 +464,6 @@ int main(int argc, char *argv[])
 		/**********************************************************************
 		 *						CHECK COUVRE FEU 							  *
 		 *********************************************************************/
-		print_debug(1, "couvre feu ?");
 		if (sem_trywait(&m_rest -> couvre_feu) == -1)
 		{
 			if(errno != EAGAIN)
@@ -472,13 +473,39 @@ int main(int argc, char *argv[])
 		{
 			print_debug(1, "COUVRE FEU");
 			// ATTENDRE FIN REPAS ET REFOULE
+            refouler = 1;
+            for (int i = 0; i < nb_table; i++)
+            {
+                if (salle[i].nb_conv < salle[i].nb_conv_attendus)
+                {
+                    nb_groupes_servis++;
+                    nb_convives_servis += salle[i].nb_conv;
+                    printf("JE DEMARRE TABLE CAR COUVRE FEU APPROCHE\n");
+                    switch(fork())
+                    {
+                        case -1 :
+                            raler("fork", 1);
+                            break;
+                        case 0 :
+                            lancer_chrono(chrono, i, salle[i].nb_conv);
+                            break;
+                    } 
+                }
+            }
+
+
+
 			ouverture_fermeture_restaurant(0); //fermeture
-			
+
 			printf("%d convives servis dans %d groupes\n"
 					, nb_convives_servis, nb_groupes_servis);
 			//print_debug(1, "destruction restaurant");
-			
 
+
+
+            // WAIT PROCESSUS (nb = nb_groupes_servis)
+
+            // FREE LES STRUCTURES MALLOC			
 			destruction_restaurant(m_rest, nb_table);
 			return EXIT_SUCCESS;
 		}

@@ -20,6 +20,7 @@
 struct table {
 	int taille;
 	int nb_conv;
+	int nb_conv_attendus;
 	char **liste_conv;
 };
 
