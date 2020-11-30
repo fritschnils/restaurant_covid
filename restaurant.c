@@ -173,7 +173,7 @@ void ouverture_fermeture_restaurant(int mode)
 	restaurant_unmap(restaurant);
 }
 
-void lancer_chrono(struct timespec chrono, int indice, int nb_conv)
+void lancer_chrono(struct timespec chrono, int indice, int nb_conv, int *oebatar)
 {
 	sem_t faux_sem;
 	struct restaurant *restaurant = restaurant_map();
@@ -189,6 +189,7 @@ void lancer_chrono(struct timespec chrono, int indice, int nb_conv)
 	{
 		if (sem_post(&restaurant -> signal_depart_fin[indice]) == -1)
 			raler("sem_post signal_depart_fin", 1);
+		oebatar--;
 	}
 
 	if (sem_destroy(&faux_sem) == -1)
@@ -197,6 +198,19 @@ void lancer_chrono(struct timespec chrono, int indice, int nb_conv)
 	restaurant_unmap(restaurant);
 
 	exit(EXIT_SUCCESS);
+}
+
+void affiche_salle(struct table *salle, int nb_table)
+{
+	for (int i = 0; i < nb_table; i++)
+	{
+		printf("\nTable %d\ntaille : %d, nb_conv : %d\n", i, salle[i].taille, salle[i].nb_conv);
+		for(int j = 0; j < salle[i].taille; j++)
+		{
+			printf("convive %d : %s |", j, salle[i].liste_conv[j]);
+		}
+		printf("\n");
+	}
 }
 
 int main(int argc, char *argv[])
@@ -294,8 +308,11 @@ int main(int argc, char *argv[])
 			salle[i].liste_conv[j] = malloc(11 * sizeof(char));
 			if (salle[i].liste_conv[j]== NULL)
 				raler("malloc noms", 1); 
+			salle[i].liste_conv[j][0] = '\0'; 
 		}
 	}
+
+	affiche_salle(salle, nb_table);
 
 	// Création restaurant puis ouverture
 	m_rest = creation_restaurant(nb_table);
@@ -332,7 +349,7 @@ int main(int argc, char *argv[])
 					, m_rest -> req_conv.taille_grp);
 			
 			tmp = -1;
-			taille_tmp = tailles_tables[0];
+			taille_tmp = 7;
 			demarrer_table = 0;
 			// si c'est un chef cherche la table qui va bien
 			if (m_rest -> req_conv.taille_grp != -1)
@@ -340,15 +357,16 @@ int main(int argc, char *argv[])
 				printf("C'EST LE CHEF\n");
 				for (int i = 0; i < nb_table; i++)
 				{
-					if (tailles_tables[i] >= m_rest -> req_conv.taille_grp
-							&& tailles_tables[i] <= taille_tmp
-							&& salle[i].nb_conv == 0)
+					if(salle[i].nb_conv == 0 // elle est dispo
+							&& tailles_tables[i] >= m_rest -> req_conv.taille_grp // est assez grande
+							&& tailles_tables[i] < taille_tmp) // plus optimisée que l'actuelle
+					{
+						taille_tmp = tailles_tables[i];
 						tmp = i;
-					printf("taille table : %ld, taile groupe : %d, nb_conv a la table : %d\n", tailles_tables[i], m_rest -> req_conv.taille_grp, salle[i].nb_conv);
-
+					}
 				}
 
-				if (tmp != -1 /*&& tmp <= nb_table*/)
+				if (tmp != -1)
 				{
 					strncpy(salle[tmp].liste_conv[0]
 							, m_rest -> req_conv.nom_convive, 10);
@@ -365,7 +383,7 @@ int main(int argc, char *argv[])
 				for (int i = 0; i < nb_table; i++)
 				{
 					if (strncmp(salle[i].liste_conv[0]
-							, m_rest -> req_conv.nom_convive, 10) == 0)
+							, m_rest -> req_conv.nom_chef, 10) == 0)
 					{
 						if (salle[i].nb_conv == salle[i].taille)
 							tmp = -1;
@@ -375,7 +393,7 @@ int main(int argc, char *argv[])
 					}
 				}
 
-				if (tmp != -1 /*&& tmp <= nb_table*/)
+				if (tmp != -1)
 				{
 
 					strncpy(salle[tmp].liste_conv[salle[tmp].nb_conv]
@@ -385,18 +403,18 @@ int main(int argc, char *argv[])
 					//ECRIRE AUSSI DANS LE CAHIER DE RAPPEL
 				}
 			}
-			printf("JE RENVOIE %d AU CLIENT\n", tmp);
 
 			// pas de table -> refouler
-			if (/*tmp > nb_table || */tmp == -1)
+			if (tmp == -1)
 				m_rest -> reponse_serv = -1;
 			// sinon -> donner indice de la table
 			else
 			{
 				m_rest -> reponse_serv = tmp; 
-				if (salle[tmp].nb_conv == m_rest -> req_conv.taille_grp)
+				if (salle[tmp].nb_conv == salle[tmp].taille)
 					demarrer_table = 1;
 			}
+			printf("JE RENVOIE %d AU CLIENT\n", tmp);
 
 			// donne réponse au convive
 			if (sem_post(&m_rest -> reponse_serveur) == -1)
@@ -407,22 +425,24 @@ int main(int argc, char *argv[])
 			if (sem_wait(&m_rest -> ack_convive) == -1)
 				raler("sem_wait ack_convive", 1);
 			
-
+			int oebatar = 1;
 			if (demarrer_table)
-			printf("JE DEMARRE TABLE\n");
 			{
+				nb_groupes_servis++;
+	 			nb_convives_servis += salle[tmp].nb_conv;
+				printf("JE DEMARRE TABLE\n");
  				switch(fork())
  				{
  					case -1 :
  						raler("fork", 1);
  						break;
  					case 0 :
- 						lancer_chrono(chrono, tmp, salle[tmp].nb_conv);
+ 						lancer_chrono(chrono, tmp, salle[tmp].nb_conv, &oebatar);
  						break;
  				}
- 				nb_groupes_servis++;
- 				nb_convives_servis += salle[tmp].nb_conv;
- 			}		
+ 			}	
+ 			printf("oebatar : %d\n", oebatar);	
+ 			affiche_salle(salle, nb_table);
 		}
 
 		/**********************************************************************
@@ -454,7 +474,8 @@ int main(int argc, char *argv[])
 			// ATTENDRE FIN REPAS ET REFOULE
 			ouverture_fermeture_restaurant(0); //fermeture
 			
-			printf("%d convives servis dans %d groupes\n", 0, 0);
+			printf("%d convives servis dans %d groupes\n"
+					, nb_convives_servis, nb_groupes_servis);
 			//print_debug(1, "destruction restaurant");
 			
 
