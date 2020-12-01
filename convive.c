@@ -125,6 +125,7 @@ int main(int argc, char *argv[])
 		raler("sem_wait reponse_serveur", 1);
 
 	//traite reponse : s'installe / repart
+    printf("Bonjour %s vous avez la table %d\n", m_rest -> req_conv.nom_convive, m_rest -> reponse_serv);
 	rep = m_rest -> reponse_serv;
 
 	if (sem_post(&m_rest -> ack_convive) == -1)

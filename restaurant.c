@@ -173,16 +173,24 @@ void ouverture_fermeture_restaurant(int mode)
 	restaurant_unmap(restaurant);
 }
 
-void lancer_chrono(struct timespec chrono, int indice, int nb_conv)
+void lancer_chrono(int duree_service, int indice, int nb_conv)
 {
 	sem_t faux_sem;
+    struct timespec time;
 	struct restaurant *restaurant = restaurant_map();
 
 	if (sem_init(&faux_sem, 0, 0) == -1)
 		raler("sem_init faux_sem", 1);
+    
+    if (clock_gettime(CLOCK_REALTIME, &time) == -1)
+        raler("clock_gettime", 1);
 
-    printf("EST CE QUE LE CLIENT ATTEND DEJA ?\n");
-	if (sem_timedwait(&faux_sem, &chrono) == -1)
+    time.tv_sec += duree_service/1000;
+    time.tv_nsec += duree_service * 1000000;
+    time.tv_nsec %= 1000000000;
+
+
+	if (sem_timedwait(&faux_sem, &time) == -1)
 		if (errno != ETIMEDOUT)
 			raler("timedwait", 1);
 
@@ -190,7 +198,7 @@ void lancer_chrono(struct timespec chrono, int indice, int nb_conv)
 	{
 		if (sem_post(&restaurant -> signal_depart_fin[indice]) == -1)
 			raler("sem_post signal_depart_fin", 1);
-        printf("JE TEJ CONVIVE %d\n", i);
+        printf("LE CONVIVE %d S'EN VA\n", i);
 	}
 
 	if (sem_destroy(&faux_sem) == -1)
@@ -224,7 +232,6 @@ int main(int argc, char *argv[])
 	char *endptr, *str;
 	struct restaurant *m_rest;
 	struct table *salle;
-	struct timespec chrono;
 
 	/**************************************************************************
 	 *							CHECK DES ARGUMENTS 						  *
@@ -289,8 +296,6 @@ int main(int argc, char *argv[])
 	/**************************************************************************
 	 *							INITIALISATION		 						  *
 	 *************************************************************************/	
-	chrono.tv_sec = 0;
-	chrono.tv_nsec = 1000000 * duree_service;
 
 	// Allocation salle
 	salle = malloc(nb_table * sizeof(struct table));
@@ -328,6 +333,20 @@ int main(int argc, char *argv[])
 	 *************************************************************************/
 	while (!test_couvrefeu)
 	{
+        /**********************************************************************
+         *                 NETTOYAGE DES TABLES VIDES                         *
+         *********************************************************************/
+        for (int i = 0; i < nb_table; i++)
+        {
+            if (sem_getvalue(&m_rest -> signal_depart_fin[i], &test_convive) == -1)
+                raler("sem_getvalue", 1);
+            if (test_convive == 0 && salle[i].nb_conv != 0)
+            {
+                salle[i].nb_conv = 0;
+                salle[i].nb_conv_attendus = 0;
+            }
+        }
+
 		/**********************************************************************
 		 *						CHECK CONVIVE ATTEND						  *
 		 *********************************************************************/
@@ -416,8 +435,9 @@ int main(int argc, char *argv[])
 				m_rest -> reponse_serv = tmp; 
 				if (salle[tmp].nb_conv == salle[tmp].nb_conv_attendus)
 					demarrer_table = 1;
+                printf("Bonjour %s vous avez la table %d\n", m_rest -> req_conv.nom_convive, tmp);
 			}
-			printf("JE RENVOIE %d AU CLIENT\n", tmp);
+			
 
 			// donne réponse au convive
 			if (sem_post(&m_rest -> reponse_serveur) == -1)
@@ -428,7 +448,9 @@ int main(int argc, char *argv[])
 			if (sem_wait(&m_rest -> ack_convive) == -1)
 				raler("sem_wait ack_convive", 1);
 			
-			//int oebatar = 1;
+            // NETTOYER REQUETE
+
+
 			if (demarrer_table)
 			{
 				nb_groupes_servis++;
@@ -440,22 +462,23 @@ int main(int argc, char *argv[])
     					raler("fork", 1);
     					break;
     				case 0 :
-    					lancer_chrono(chrono, tmp, salle[tmp].nb_conv);
+    					lancer_chrono(duree_service, tmp, salle[tmp].nb_conv);
     					break;
     			}
  			}	
- 			//printf("oebatar : %d\n", oebatar);	
  			affiche_salle(salle, nb_table);
 		}
 
 		/**********************************************************************
 		 *						CHECK CONTROLE POLICE						  *
 		 *********************************************************************/
-		if (sem_getvalue(&m_rest -> police_presente, &test_police) == -1)
-			raler("sem_getvalue", 1);
-
-		if (test_police > 0)
-		{
+        if (sem_trywait(&m_rest -> test_police) == -1)
+        {
+            if(errno != EAGAIN)
+                raler("sem_trywait", 1);
+        }
+        else
+        {
 			print_debug(1, "LA POLICE");
 			// CONTROLE POLICE
 		}
@@ -487,13 +510,18 @@ int main(int argc, char *argv[])
                             raler("fork", 1);
                             break;
                         case 0 :
-                            lancer_chrono(chrono, i, salle[i].nb_conv);
+                            lancer_chrono(duree_service, i, salle[i].nb_conv);
                             break;
                     } 
                 }
             }
 
 
+
+            // for (int i = 0; i < nb_table; i++)
+            // {
+            //     while()
+            // }
 
 			ouverture_fermeture_restaurant(0); //fermeture
 

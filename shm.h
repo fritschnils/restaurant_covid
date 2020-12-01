@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <semaphore.h>
+#include <time.h>
 
 #define NOM_RESTAURANT "/leViandard"
 #define SIZE_RESTAURANT(n) sizeof(struct restaurant) + (n)*sizeof(int)
