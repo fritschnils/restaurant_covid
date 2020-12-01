@@ -4,44 +4,44 @@
 
 void raler(const char* msg, int sys_error)
 {
-	if (sys_error)
-		perror(msg);
-	else
-		fprintf(stderr, "Erreur : %s\n", msg);
-	
-	if (fflush(stderr) == EOF)
-		raler("fflush", 1);
-	exit(EXIT_FAILURE);
+    if (sys_error)
+        perror(msg);
+    else
+        fprintf(stderr, "Erreur : %s\n", msg);
+    
+    if (fflush(stderr) == EOF)
+        raler("fflush", 1);
+    exit(EXIT_FAILURE);
 }
 
 /** Affiche un message de debugage immédiatement.
 
-	/!\ COMMENTAIRE A COMPLETER /!\
-	
-	\param niveau Le niveau du message de debugage.
+    /!\ COMMENTAIRE A COMPLETER /!\
+    
+    \param niveau Le niveau du message de debugage.
     \param msg Le message à afficher.
     \returns Cette fonction ne renvoie rien.
 */
 void print_debug(int niveau, char *msg)
 {
-	char *var_env_ptr;
-	int var_env_value;
+    char *var_env_ptr;
+    int var_env_value;
 
-	if ((var_env_ptr = getenv("DEBUG_REST")) == NULL)
-		return;
+    if ((var_env_ptr = getenv("DEBUG_REST")) == NULL)
+        return;
 
-	if ((var_env_value = atoi(var_env_ptr)) == 0)
-		return;
+    if ((var_env_value = atoi(var_env_ptr)) == 0)
+        return;
 
-	//if(niveau > 1 && niveau > var_env_value)
-	//	return;
-	(void) niveau;
+    //if(niveau > 1 && niveau > var_env_value)
+    //  return;
+    (void) niveau;
 
-	printf("-------%s\n", msg);
-	if (fflush(stdout) == EOF)
-		raler("fflush", 1);
+    printf("-------%s\n", msg);
+    if (fflush(stdout) == EOF)
+        raler("fflush", 1);
 
-	return;
+    return;
 }
 
 /** Projection en mémoire du segment de mémoire partagée.
@@ -55,9 +55,9 @@ void print_debug(int niveau, char *msg)
 */
 struct restaurant *restaurant_map()
 {
-	struct stat shared_file;
-	struct restaurant* m_rest;
-	int fd;
+    struct stat shared_file;
+    struct restaurant* m_rest;
+    int fd;
 
     if ((fd = shm_open(NOM_RESTAURANT, O_RDWR , 0666)) == -1)
         raler("ouverture segment", 1);
@@ -83,9 +83,9 @@ struct restaurant *restaurant_map()
 */
 void restaurant_unmap(struct restaurant * restaurant)
 {
-	if (munmap(restaurant, restaurant -> taille) == -1)
-		raler("munmap", 1);
-	return;
+    if (munmap(restaurant, restaurant -> taille) == -1)
+        raler("munmap", 1);
+    return;
 }
 
 

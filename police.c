@@ -3,17 +3,17 @@
 
 int main(int argc, char const *argv[])
 {
-	(void) argv;
-	if (argc != 1){
-		fprintf (stderr, "usage: %s\n", argv[0]);
-		return EXIT_FAILURE;
-	}
-	// FIN TESTS ARGS --------------------------------------------------------
+    (void) argv;
+    if (argc != 1){
+        fprintf (stderr, "usage: %s\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    // FIN TESTS ARGS --------------------------------------------------------
 
 
 
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 #endif
