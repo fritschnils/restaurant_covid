@@ -72,6 +72,7 @@ struct restaurant *restaurant_map()
     return m_rest;
 }
 
+
 /** Suppression de la projection en mémoire du segment de mémoire partagée.
 
     Après appel de cette fonction, le segment de mémoire n'est plus
@@ -84,6 +85,42 @@ struct restaurant *restaurant_map()
 void restaurant_unmap(struct restaurant * restaurant)
 {
     if (munmap(restaurant, restaurant -> taille) == -1)
+        raler("munmap", 1);
+    return;
+}
+
+
+
+
+
+
+
+
+
+
+
+struct compte_rendu_shm *compte_rendu_map()
+{
+    struct stat shared_file;
+    struct compte_rendu_shm *cr;
+    int fd;
+
+    if ((fd = shm_open(NOM_COMPTE_RENDU, O_RDWR , 0666)) == -1)
+        raler("ouverture segment compte_rendu_shm", 1);
+
+    if (fstat(fd, &shared_file) == -1)
+        raler("fstat", 1);
+
+    if ((cr = mmap(NULL, shared_file.st_size, PROT_READ | PROT_WRITE, 
+        MAP_SHARED, fd, 0)) == MAP_FAILED)
+        raler("mmap", 1);
+
+    return cr;
+}
+
+void compte_rendu_unmap(struct compte_rendu_shm * cr)
+{
+    if (munmap(cr, cr -> taille) == -1)
         raler("munmap", 1);
     return;
 }

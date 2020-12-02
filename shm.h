@@ -17,7 +17,10 @@
 #include <sys/wait.h>
 
 #define NOM_RESTAURANT "/leViandard"
+#define NOM_COMPTE_RENDU "/compteRendu"
 #define SIZE_RESTAURANT(n) sizeof(struct restaurant) + (n)*sizeof(int)
+#define SIZE_COMPTE_RENDU(x) sizeof(struct compte_rendu_shm) \
+                                + (x)*sizeof(struct element_shm);
 
 struct table {
     int taille;
@@ -47,9 +50,41 @@ struct restaurant {
     sem_t ack_convive;          // init 0 : indique que le convive a bien recu
     
     sem_t police_presente;      // init 0 : indique un controle de police
+    sem_t compte_rendu_pret;    // init 0 : indique que la police peut lire
     sem_t couvre_feu;           // init 0 : indique que un couvre feu proche
 
-    sem_t fin_repas[];  // init 0 : indique fin de repas aux tables
+    sem_t fin_repas[];          // init 0 : indique fin de repas aux tables
+};
+
+
+
+// 2 structures pour stocker le cahier de rappel
+struct element {
+    int nb_conv;
+    char noms[6][11];
+    struct element *next;
+};
+
+struct compte_rendu {
+    int nb_grp;
+    struct element *head;
+    struct element *tail;
+};
+
+
+// 2 structures pour le cahier de rappel et l'instantané en mémoire partagée
+struct element_shm {
+    int type;                   // 1 = instantané table, 0 = groupe servis
+    int nb_conv;
+    char noms[6][11];
+};
+
+struct compte_rendu_shm {
+    int nb_grp;
+    int nb_table;
+    size_t taille;
+    sem_t ack_police;           // init 0 : indique que la police a traité
+    struct element_shm liste_elements[];
 };
 
 
@@ -58,6 +93,9 @@ void print_debug(int, char *);
 
 struct restaurant *restaurant_map();
 void restaurant_unmap(struct restaurant *);
+
+struct compte_rendu_shm *compte_rendu_map();
+void compte_rendu_unmap(struct compte_rendu_shm *);
 
 
 

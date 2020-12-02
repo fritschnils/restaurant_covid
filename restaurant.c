@@ -25,7 +25,7 @@ void usage()
 */
 struct restaurant *creation_restaurant(int nb_table)
 {
-    int fd;
+    int fd, i;
     struct restaurant *m_restaurant;
     ssize_t octets_rest = SIZE_RESTAURANT(nb_table);
 
@@ -62,6 +62,9 @@ struct restaurant *creation_restaurant(int nb_table)
     if (sem_init(&m_restaurant -> police_presente, 1, 0) == -1)
         raler("sem_init police_presente", 1);
 
+    if (sem_init(&m_restaurant -> compte_rendu_pret, 1, 0) == -1)
+        raler("sem_init compte_rendu_pret", 1);
+
     if (sem_init(&m_restaurant -> couvre_feu, 1, 0) == -1)
         raler("sem_init couvre_feu", 1);
 
@@ -69,7 +72,7 @@ struct restaurant *creation_restaurant(int nb_table)
     m_restaurant -> req_conv.nom_chef[0] = '\0';
     m_restaurant -> req_conv.taille_grp = -1;
 
-    for (int i = 0; i < nb_table; i++)
+    for (i = 0; i < nb_table; i++)
         if (sem_init(&m_restaurant -> fin_repas[i], 1, 0) == -1)
             raler("sem_init fin_repas", 1);
 
@@ -90,6 +93,8 @@ struct restaurant *creation_restaurant(int nb_table)
 */
 void destruction_restaurant(struct restaurant *restaurant, int nb_table)
 {
+    int i;
+
     if (sem_wait(&restaurant -> crit_ouvert) == -1)
         raler("sem_wait crit_ouvert", 1);
 
@@ -120,10 +125,13 @@ void destruction_restaurant(struct restaurant *restaurant, int nb_table)
     if (sem_destroy(&restaurant -> police_presente) == -1)
         raler("destroy police_presente", 1);
 
-    if (sem_destroy(&restaurant -> couvre_feu) == -1)
-        raler("destroy couvre_feu", 1);
+    if (sem_destroy(&restaurant -> compte_rendu_pret) == -1)
+        raler("destroy police_presente", 1);
 
-    for (int i = 0; i < nb_table ; i++)
+    if (sem_destroy(&restaurant -> couvre_feu) == -1)
+        raler("destroy compte_rendu_pret", 1);
+
+    for (i = 0; i < nb_table ; i++)
         if (sem_destroy(&restaurant -> fin_repas[i]) == -1)
             raler("sem_destroy fin_repas", 1);
 
@@ -175,6 +183,7 @@ void ouverture_fermeture_restaurant(int mode)
 
 void lancer_chrono(int duree_service, int indice, int nb_conv)
 {
+    int i;
     sem_t faux_sem;
     struct timespec time;
     struct restaurant *restaurant = restaurant_map();
@@ -194,7 +203,7 @@ void lancer_chrono(int duree_service, int indice, int nb_conv)
         if (errno != ETIMEDOUT)
             raler("timedwait", 1);
 
-    for(int i = 0; i < nb_conv; i++)
+    for(i = 0; i < nb_conv; i++)
     {
         if (sem_post(&restaurant -> fin_repas[indice]) == -1)
             raler("sem_post fin_repas", 1);
@@ -211,11 +220,12 @@ void lancer_chrono(int duree_service, int indice, int nb_conv)
 
 void affiche_salle(struct table *salle, int nb_table)
 {
-    for (int i = 0; i < nb_table; i++)
+    int i, j;
+    for (i = 0; i < nb_table; i++)
     {
         printf("\nTable %d\ntaille : %d, nb_conv : %d\n", i
                 , salle[i].taille, salle[i].nb_conv);
-        for(int j = 0; j < salle[i].taille; j++)
+        for(j = 0; j < salle[i].taille; j++)
         {
             printf("convive %d : %s |", j, salle[i].liste_conv[j]);
         }
@@ -224,10 +234,12 @@ void affiche_salle(struct table *salle, int nb_table)
     printf("---------------------------------------------------------\n");
 }
 
-void n_wait(int n){
+void n_wait(int n)
+{
     int reason;
+    int j;
 
-    for(int j = 0; j < n; j++){
+    for(j = 0; j < n; j++){
         if(wait(&reason) == -1)
             raler("wait", 1);
         if(!WIFEXITED(reason) || WEXITSTATUS(reason) == EXIT_FAILURE)
@@ -235,15 +247,110 @@ void n_wait(int n){
     }
 }
 
+void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
+{
+    int i, j, fd, nb_elem = nb_tab + cr -> nb_grp;
+    ssize_t octets_cr = SIZE_COMPTE_RENDU(nb_elem);
+    struct element *tmp = cr -> head;
+    struct compte_rendu_shm *cr_shm;
+    struct restaurant *restaurant = restaurant_map();
+
+    // Allocations
+    if ((fd = shm_open(NOM_COMPTE_RENDU
+            , O_RDWR| O_CREAT| O_EXCL, 0666)) == -1)
+        raler("shm_open", 1);
+
+    if (ftruncate(fd, octets_cr) == -1)
+        raler("ftruncate", 1);
+
+    if ((cr_shm = mmap(NULL, octets_cr, PROT_READ | PROT_WRITE, 
+            MAP_SHARED, fd, 0)) == MAP_FAILED)
+        raler("mmap", 1);
+
+    if (sem_init(&cr_shm -> ack_police, 1, 0) == -1)
+        raler("sem_init ack_police", 1);
+
+
+    //Ecriture compte rendu à la police
+    cr_shm -> taille = octets_cr;
+    cr_shm -> nb_grp = cr -> nb_grp;
+    cr_shm -> nb_table = nb_tab;
+    for (i = 0; i < nb_tab; i++)
+    {
+        cr_shm -> liste_elements[i].type = 1;
+        cr_shm -> liste_elements[i].nb_conv = salle[i].nb_conv;
+        for (j = 0; j < salle[i].nb_conv; j++)
+        {
+            strncpy(cr_shm -> liste_elements[i].noms[j]
+                        , salle[i].liste_conv[j], 10);
+            cr_shm -> liste_elements[i].noms[j][10] = '\0'; //securité
+        }
+    }
+
+    i = 0;
+    while(tmp)
+    {
+        cr_shm -> liste_elements[nb_tab + i].type = 0;
+        cr_shm -> liste_elements[nb_tab + i].nb_conv = tmp -> nb_conv;
+        for (j = 0; j < tmp -> nb_conv; j++)
+        {
+            strncpy(cr_shm -> liste_elements[nb_tab + i].noms[j]
+                        , tmp -> noms[j], 10);
+            cr_shm -> liste_elements[nb_tab + i].noms[j][10] = '\0';//securité            
+        }
+        i++;
+        tmp = tmp -> next;
+    }
+
+    if (sem_post(&restaurant -> compte_rendu_pret) == -1)
+        raler("sem_post compte_rendu_pret", 1);
+
+    if (sem_wait(&cr_shm -> ack_police) == -1)
+        raler("sem_wait ack_police", 1);
+
+
+    // Désallocations
+    restaurant_unmap(restaurant);
+
+    if (sem_destroy(&cr_shm -> ack_police) == -1)
+        raler("sem_destroy ack_police", 1);
+
+    if (munmap(cr_shm, octets_cr) == -1)
+        raler("munmap", 1);
+
+    if  (shm_unlink(NOM_COMPTE_RENDU) == -1)
+        raler("shm_unlink", 1);    
+}
+
+void ajout_groupe_servi(struct compte_rendu *cr, struct table t)
+{
+    int i;
+    struct element *elt = malloc(sizeof(struct element));
+    elt -> nb_conv = t.nb_conv;
+    elt -> next = NULL;
+    printf("DEBUT FOR on recopie %s\n", t.liste_conv[0]);
+    for (i = 0; i < t.nb_conv; i++)
+    {
+        strncpy(elt -> noms[i], t.liste_conv[i], 10);
+        elt -> noms[i][10] = '\0'; //sécurité
+        printf("%s a bien été recopié\n", elt -> noms[i]);
+    }
+
+    cr -> nb_grp++;
+    cr -> tail -> next = elt;//printf("2\n");
+    cr -> tail = elt;//printf("3\n");
+}
+
 int main(int argc, char *argv[])
 {
-    int nb_table = 0, test_convive = 0, test_couvrefeu = 0;
+    int nb_table = 0, test_convive = 0, test_couvrefeu = 0, i, j;
     int tmp, demarrer_table, nb_groupes_servis = 0, nb_convives_servis = 0;
     int taille_tmp, refouler = 0;
     long int duree_service = 0, *table_sizes;
     char *endptr, *str;
     struct restaurant *m_rest;
     struct table *salle;
+    struct compte_rendu *cahier_rappel;
 
     /**************************************************************************
      *                          CHECK DES ARGUMENTS                           *
@@ -281,7 +388,7 @@ int main(int argc, char *argv[])
     if ((table_sizes = malloc(nb_table * sizeof(long int))) == NULL)
         raler("malloc : nb tables", 0);
 
-    for (int i = 0; i < nb_table; i++)
+    for (i = 0; i < nb_table; i++)
     {
         str = argv[i+2];
         errno = 0;
@@ -306,15 +413,21 @@ int main(int argc, char *argv[])
 
 
     /**************************************************************************
-     *                          INITIALISATION                                *
+     *                          INITIALISATIONS                               *
      *************************************************************************/ 
+
+    // Création cahier rappel
+    cahier_rappel = malloc(sizeof(struct compte_rendu));
+    cahier_rappel -> nb_grp = 0;
+    cahier_rappel -> head = malloc(sizeof(struct element));
+    cahier_rappel -> tail = malloc(sizeof(struct element));
 
     // Allocation salle
     salle = malloc(nb_table * sizeof(struct table));
     if (salle == NULL)
         raler("malloc tables", 1);
 
-    for (int i = 0; i < nb_table; i++)
+    for (i = 0; i < nb_table; i++)
     {
         salle[i].taille = table_sizes[i];
         salle[i].nb_conv = 0;
@@ -322,7 +435,7 @@ int main(int argc, char *argv[])
         salle[i].liste_conv = malloc(salle[i].taille * sizeof(char*));
         if (salle[i].liste_conv == NULL)
             raler("malloc listes noms", 1);
-        for (int j = 0; j < salle[i].taille; j++)
+        for (j = 0; j < salle[i].taille; j++)
         {
             salle[i].liste_conv[j] = malloc(11 * sizeof(char));
             if (salle[i].liste_conv[j]== NULL)
@@ -348,7 +461,7 @@ int main(int argc, char *argv[])
         /**********************************************************************
          *                 NETTOYAGE DES TABLES VIDES                         *
          *********************************************************************/
-        for (int i = 0; i < nb_table; i++)
+        for (i = 0; i < nb_table; i++)
         {
             if (sem_getvalue(&m_rest -> fin_repas[i], &test_convive) == -1)
                 raler("sem_getvalue", 1);
@@ -387,7 +500,7 @@ int main(int argc, char *argv[])
             if ((m_rest -> req_conv.taille_grp != -1) && !refouler)
             {
                 printf("C'EST LE CHEF\n");
-                for (int i = 0; i < nb_table; i++)
+                for (i = 0; i < nb_table; i++)
                 {
                     if(salle[i].nb_conv == 0 // dispo && taille && + optimisée
                             && table_sizes[i] >= m_rest -> req_conv.taille_grp
@@ -404,7 +517,7 @@ int main(int argc, char *argv[])
                             , m_rest -> req_conv.nom_convive, 10);
                     salle[tmp].liste_conv[0][10] = '\0'; // sécurité
                     salle[tmp].nb_conv ++;
-                    salle[tmp].nb_conv_attendus = m_rest -> req_conv.taille_grp;
+                    salle[tmp].nb_conv_attendus = m_rest-> req_conv.taille_grp;
                     //ECRIRE AUSSI DANS LE CAHIER DE RAPPEL
                 }
             }
@@ -413,7 +526,7 @@ int main(int argc, char *argv[])
             else if (!refouler)
             {
                 printf("C'EST PAS LE CHEF\n");
-                for (int i = 0; i < nb_table; i++)
+                for (i = 0; i < nb_table; i++)
                 {
                     if (strncmp(salle[i].liste_conv[0]
                             , m_rest -> req_conv.nom_chef, 10) == 0)
@@ -447,6 +560,8 @@ int main(int argc, char *argv[])
                 m_rest -> reponse_serv = tmp; 
                 if (salle[tmp].nb_conv == salle[tmp].nb_conv_attendus)
                     demarrer_table = 1;
+                printf("AJOUT AU CAHIER\n");
+                ajout_groupe_servi(cahier_rappel, salle[tmp]);
             }
             
 
@@ -491,7 +606,13 @@ int main(int argc, char *argv[])
         else
         {
             print_debug(1, "LA POLICE");
-            // CONTROLE POLICE
+
+        // Fait le compte_rendu
+        transmet_police(salle, cahier_rappel, nb_table);
+
+        // Signale compte_rendu pret
+        if (sem_post(&m_rest -> compte_rendu_pret) == -1)
+            raler("sem_post compte_rendu_pret", 1);
         }
 
 
@@ -506,14 +627,17 @@ int main(int argc, char *argv[])
         else
         {
             print_debug(1, "COUVRE FEU");
-            // ATTENDRE FIN REPAS ET REFOULE
+            // LANCER TABLES ET REFOULE
             refouler = 1;
-            for (int i = 0; i < nb_table; i++)
+            for (i = 0; i < nb_table; i++)
             {
                 if (salle[i].nb_conv < salle[i].nb_conv_attendus)
                 {
                     nb_groupes_servis++;
                     nb_convives_servis += salle[i].nb_conv;
+
+                    ajout_groupe_servi(cahier_rappel, salle[i]);
+
                     printf("JE DEMARRE TABLE CAR COUVRE FEU APPROCHE\n");
                     switch(fork())
                     {
@@ -528,7 +652,7 @@ int main(int argc, char *argv[])
             }
 
 
-
+            //ATTENDRE FIN TABLES
             // for (int i = 0; i < nb_table; i++)
             // {
             //     while()
