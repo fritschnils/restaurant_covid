@@ -24,12 +24,15 @@ int main(int argc, char const *argv[])
 
     if (!(restaurant -> ouvert))
     {
-        if (sem_post(&restaurant -> crit_ouvert) == -1)
-            raler("sem_post crit_ouvert", 1);
         restaurant_unmap(restaurant);
         raler("fermeture alors que restaurant fermé", 0);
     }
 
+    if (sem_post(&restaurant -> crit_ouvert) == -1)
+        raler("sem_post crit_ouvert", 1);
+
+
+    printf("bonjour, controle de police\n");
     // Signale sa présence
     if (sem_post(&restaurant -> police_presente) == -1)
         raler("sem_post police_presente", 1);
@@ -69,7 +72,7 @@ int main(int argc, char const *argv[])
         raler("sem_post ack_police", 1);
 
 
-
+    printf("j'ai bien controlé, je vous laisse...\n");
     restaurant_unmap(restaurant);
     compte_rendu_unmap(cr);
     return EXIT_SUCCESS;

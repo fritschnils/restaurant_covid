@@ -270,7 +270,7 @@ void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
     if (sem_init(&cr_shm -> ack_police, 1, 0) == -1)
         raler("sem_init ack_police", 1);
 
-
+    printf("Ecriture du compte rendu \n");
     //Ecriture compte rendu à la police
     cr_shm -> taille = octets_cr;
     cr_shm -> nb_grp = cr -> nb_grp;
@@ -302,12 +302,15 @@ void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
         tmp = tmp -> next;
     }
 
+    printf("compte rendu pret\n");
+    // Signale compte_rendu pret
     if (sem_post(&restaurant -> compte_rendu_pret) == -1)
         raler("sem_post compte_rendu_pret", 1);
 
     if (sem_wait(&cr_shm -> ack_police) == -1)
         raler("sem_wait ack_police", 1);
 
+    printf("police a bien reçu, je quitte\n");
 
     // Désallocations
     restaurant_unmap(restaurant);
@@ -480,7 +483,7 @@ int main(int argc, char *argv[])
 
         if (test_convive < 1)
         {
-            print_debug(1, "UN CONVIVE");
+            printf("COUVRE FEU\n");
 
             if (sem_post(&m_rest -> serveur_dispo) == -1)
                 raler("sem_post serveur_dispo", 1);
@@ -605,16 +608,15 @@ int main(int argc, char *argv[])
         }
         else
         {
-            print_debug(1, "LA POLICE");
+            printf("LA POLICE\n");
 
-        // Fait le compte_rendu
-        transmet_police(salle, cahier_rappel, nb_table);
+            // Fait le compte_rendu
+            transmet_police(salle, cahier_rappel, nb_table);
 
-        // Signale compte_rendu pret
-        if (sem_post(&m_rest -> compte_rendu_pret) == -1)
-            raler("sem_post compte_rendu_pret", 1);
+            printf("le controle s'est bien passé je reprends l'attente...\n");
+
+
         }
-
 
         /**********************************************************************
          *                      CHECK COUVRE FEU                              *
@@ -626,7 +628,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            print_debug(1, "COUVRE FEU");
+            printf("COUVRE FEU\n");
             // LANCER TABLES ET REFOULE
             refouler = 1;
             for (i = 0; i < nb_table; i++)
