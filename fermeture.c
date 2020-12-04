@@ -24,7 +24,7 @@ int main(int argc, char const *argv[])
         if (sem_post(&m_rest -> crit_ouvert) == -1)
             raler("sem_post crit_ouvert", 1);
         restaurant_unmap(m_rest);
-        raler("fermeture alors que restaurant fermé", 0);
+        raler("fermeture alors que restaurant fermé ./fermeture", 0);
     }
 
     printf("oe\n");

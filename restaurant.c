@@ -59,6 +59,9 @@ struct restaurant *creation_restaurant(int nb_table)
     if (sem_init(&m_restaurant -> ack_convive, 1, 0) == -1)
         raler("sem_init ack_convive", 1);
 
+    if (sem_init(&m_restaurant -> besoin_nettoyage, 1, 0) == -1)
+        raler("sem_init besoin_nettoyage", 1);
+
     if (sem_init(&m_restaurant -> police_presente, 1, 0) == -1)
         raler("sem_init police_presente", 1);
 
@@ -124,6 +127,9 @@ void destruction_restaurant(struct restaurant *restaurant, int nb_table)
 
     if (sem_destroy(&restaurant -> police_presente) == -1)
         raler("destroy police_presente", 1);
+
+    if (sem_destroy(&restaurant -> besoin_nettoyage) == -1)
+        raler("destroy besoin_nettoyage", 1);
 
     if (sem_destroy(&restaurant -> compte_rendu_pret) == -1)
         raler("destroy police_presente", 1);
@@ -223,6 +229,9 @@ void lancer_chrono(int duree_service, int indice, int nb_conv)
             raler("sem_post fin_repas", 1);
         printf("%d quitte la table\n", i);
     }
+    
+    if (sem_post(&restaurant -> besoin_nettoyage) == -1)
+        raler("sem_post besoin_nettoyage", 1);
 
     if (sem_destroy(&faux_sem) == -1)
         raler("sem_destroy faux_sem", 1);
@@ -420,9 +429,21 @@ void insert_cahier(struct cahier_rappel* cr, struct table t)
     cr -> nb_grp++;
 }
 
+int cpt_dispo(struct table* salle, int taille_grp, int nb_table)
+{
+    int places = 0, i;
+    for (i = 0; i < nb_table; i++)
+    {
+        if (salle[i].nb_conv == 0 && salle[i].taille >= taille_grp)
+            places++;
+    }
+    return places;
+    (void)salle;
+}
+
 int main(int argc, char *argv[])
 {
-    int nb_table = 0, test_convive = 0, test_couvrefeu = 0, i, j;
+    int nb_table = 0, test_convive = 0, test_couvrefeu = 0, i, j, places;
     int tmp, demarrer_table, nb_groupes_servis = 0, nb_convives_servis = 0;
     int taille_tmp, refouler = 0;
     long int duree_service = 0, *table_sizes;
@@ -431,6 +452,8 @@ int main(int argc, char *argv[])
     struct table *salle;
     struct cahier_rappel *cahier_rappel;
 
+                // sem_t faux_sem;
+                // struct timespec time;
     /**************************************************************************
      *                          CHECK DES ARGUMENTS                           *
      *************************************************************************/
@@ -536,7 +559,7 @@ int main(int argc, char *argv[])
     while (!test_couvrefeu)
     {
         /**********************************************************************
-         *                      CHECK CONVIVE ATTEND                          *
+         *                      TRAITE ARRIVEE CONVIVE                        *
          *********************************************************************/
         if (sem_getvalue(&m_rest -> serveur_dispo, &test_convive) == -1)
             raler("sem_getvalue", 1);
@@ -554,13 +577,27 @@ int main(int argc, char *argv[])
                     , m_rest -> req_conv.nom_chef
                     , m_rest -> req_conv.taille_grp);
             
-            
-            nettoyage_tables(salle, nb_table, m_rest);
+
             tmp = -1;
             taille_tmp = 7;
             demarrer_table = 0;
+            places = 0;
+
+
+            places = cpt_dispo(salle, m_rest -> req_conv.taille_grp, nb_table);
+            
+            if (sem_trywait(&m_rest -> besoin_nettoyage) == -1)
+            {
+                if(errno != EAGAIN)
+                    raler("sem_trywait", 1);
+            }
+            else
+                nettoyage_tables(salle, nb_table, m_rest);
+
+            printf("IL Y A %d PLACES DISPONIBLES !!! \n", places);
+
             // si c'est un chef cherche la table qui va bien
-            if ((m_rest -> req_conv.taille_grp != -1) && !refouler)
+            if ((m_rest -> req_conv.taille_grp != -1) && !refouler && places)
             {
                 //printf("C'EST LE CHEF\n");
                 for (i = 0; i < nb_table; i++)
@@ -586,7 +623,7 @@ int main(int argc, char *argv[])
             }
 
             // si c'est pas un chef, cherche la table du chef
-            else if (!refouler)
+            else if (!refouler && places)
             {
                 //printf("C'EST PAS LE CHEF\n");
                 for (i = 0; i < nb_table; i++)
@@ -595,7 +632,6 @@ int main(int argc, char *argv[])
                             , m_rest -> req_conv.nom_chef, 10) == 0)
                     {
                         //printf("chef trouvé\n");
-                        //printf("actuellement à la table : %d\ntaille de la table : %d\nnb de conv attendus : %d\n", salle[i].nb_conv, salle[i].taille, salle[i].nb_conv_attendus);
                         if (salle[i].nb_conv == salle[i].taille
                             || salle[i].nb_conv == salle[i].nb_conv_attendus)
                             tmp = -1;
@@ -665,7 +701,7 @@ int main(int argc, char *argv[])
         }
 
         /**********************************************************************
-         *                      CHECK CONTROLE POLICE                         *
+         *                      TRAITE CONTROLE POLICE                        *
          *********************************************************************/
         if (sem_trywait(&m_rest -> police_presente) == -1)
         {
@@ -685,7 +721,7 @@ int main(int argc, char *argv[])
         }
 
         /**********************************************************************
-         *                      CHECK COUVRE FEU                              *
+         *                      TRAITE COUVRE FEU                             *
          *********************************************************************/
         if (sem_trywait(&m_rest -> couvre_feu) == -1)
         {
@@ -695,6 +731,7 @@ int main(int argc, char *argv[])
         else
         {
             printf("COUVRE FEU\n");
+            
             // LANCER TABLES ET REFOULE
             refouler = 1;
             for (i = 0; i < nb_table; i++)
@@ -722,9 +759,25 @@ int main(int argc, char *argv[])
 
 
             //ATTENDRE FIN TABLES
-            // for (int i = 0; i < nb_table; i++)
+            // for (i = 0; i < nb_table; i++)
             // {
-            //     while()
+
+            //     if (sem_init(&faux_sem, 0, 0) == -1)
+            //         raler("sem_init faux_sem", 1);
+                
+            //     if (clock_gettime(CLOCK_REALTIME, &time) == -1)
+            //         raler("clock_gettime", 1);
+
+            //     time = ajuster_tps(time, duree_service * 1000000);
+
+            //     if (sem_timedwait(&faux_sem, &time) == -1)
+            //         if (errno != ETIMEDOUT)
+            //             raler("timedwait", 1);
+
+
+
+            //     if (sem_destroy(&faux_sem) == -1)
+            //         raler("sem_destroy faux_sem", 1);
             // }
 
             ouverture_fermeture_restaurant(0); //fermeture

@@ -48,6 +48,7 @@ struct restaurant {
     sem_t requete_ecrite;       // init 0 : indique que la requete est prete 
     sem_t reponse_serveur;      // init 0 : indique que le serveur a repondu
     sem_t ack_convive;          // init 0 : indique que le convive a bien recu
+    sem_t besoin_nettoyage;      // init 0 : indique de lancer nettoyage table
     
     sem_t police_presente;      // init 0 : indique un controle de police
     sem_t compte_rendu_pret;    // init 0 : indique que la police peut lire
