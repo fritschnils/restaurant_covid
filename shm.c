@@ -11,6 +11,9 @@ void raler(const char* msg, int sys_error)
     
     if (fflush(stderr) == EOF)
         raler("fflush", 1);
+
+    shm_unlink(NOM_RESTAURANT);
+
     exit(EXIT_FAILURE);
 }
 
@@ -60,7 +63,7 @@ struct restaurant *restaurant_map()
     int fd;
 
     if ((fd = shm_open(NOM_RESTAURANT, O_RDWR , 0666)) == -1)
-        raler("ouverture segment", 1);
+        raler("ouverture segment restaurant", 1);
 
     if (fstat(fd, &shared_file) == -1)
         raler("fstat", 1);

@@ -65,10 +65,9 @@ struct element {
     struct element *next;
 };
 
-struct compte_rendu {
+struct cahier_rappel {
     int nb_grp;
     struct element *head;
-    struct element *tail;
 };
 
 

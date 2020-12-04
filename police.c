@@ -3,7 +3,7 @@
 
 int main(int argc, char const *argv[])
 {
-    int i, j;
+    int i, j, k;
     struct compte_rendu_shm *cr;
     struct restaurant *restaurant;
 
@@ -59,12 +59,14 @@ int main(int argc, char const *argv[])
     }
 
     printf("\ncahier de rappels :\n");
-    for (i = 0; i < cr -> nb_table; i++)
+    k = cr -> nb_table + 1;
+    for (i = cr -> nb_table; i < cr -> nb_grp + cr -> nb_table; i++)
     {
-        printf("Groupe %d :", i+1);
+        printf("Groupe %d :", k);
         for (j = 0; j < cr -> liste_elements[i].nb_conv; j++)
             printf(" %s", cr -> liste_elements[i].noms[j]);
         printf("\n");
+        k--;
     }
 
     // Prévient qu'il a terminé

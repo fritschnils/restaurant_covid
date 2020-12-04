@@ -181,6 +181,23 @@ void ouverture_fermeture_restaurant(int mode)
     restaurant_unmap(restaurant);
 }
 
+struct timespec ajuster_tps(struct timespec t, int n)
+{
+    t.tv_sec += (n/1000000000);
+    t.tv_nsec += (n%1000000000);
+    if(t.tv_nsec >= 1000000000)
+    {
+        t.tv_sec++;
+        t.tv_nsec -= 1000000000;
+    }
+    else if (t.tv_nsec < 0)
+    {
+        t.tv_sec --;
+        t.tv_nsec += 1000000000;
+    }
+    return t;
+}
+
 void lancer_chrono(int duree_service, int indice, int nb_conv)
 {
     int i;
@@ -194,10 +211,7 @@ void lancer_chrono(int duree_service, int indice, int nb_conv)
     if (clock_gettime(CLOCK_REALTIME, &time) == -1)
         raler("clock_gettime", 1);
 
-    time.tv_sec += duree_service/1000;
-    time.tv_nsec += duree_service * 1000000;
-    time.tv_nsec %= 1000000000;
-
+    time = ajuster_tps(time, duree_service * 1000000);
 
     if (sem_timedwait(&faux_sem, &time) == -1)
         if (errno != ETIMEDOUT)
@@ -207,7 +221,7 @@ void lancer_chrono(int duree_service, int indice, int nb_conv)
     {
         if (sem_post(&restaurant -> fin_repas[indice]) == -1)
             raler("sem_post fin_repas", 1);
-        printf("LE CONVIVE %d S'EN VA\n", i);
+        printf("%d quitte la table\n", i);
     }
 
     if (sem_destroy(&faux_sem) == -1)
@@ -221,13 +235,14 @@ void lancer_chrono(int duree_service, int indice, int nb_conv)
 void affiche_salle(struct table *salle, int nb_table)
 {
     int i, j;
+    printf("---------------------------------------------------------\n");
     for (i = 0; i < nb_table; i++)
     {
-        printf("\nTable %d\ntaille : %d, nb_conv : %d\n", i
+        printf("Table %d, Taille : %d, Nb conv : %d\n", i
                 , salle[i].taille, salle[i].nb_conv);
         for(j = 0; j < salle[i].taille; j++)
         {
-            printf("convive %d : %s |", j, salle[i].liste_conv[j]);
+            printf(" %s|", salle[i].liste_conv[j]);
         }
         printf("\n");
     }
@@ -247,11 +262,12 @@ void n_wait(int n)
     }
 }
 
-void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
+void transmet_police(struct table *salle, struct cahier_rappel *cr, int nb_tab)
 {
     int i, j, fd, nb_elem = nb_tab + cr -> nb_grp;
     ssize_t octets_cr = SIZE_COMPTE_RENDU(nb_elem);
-    struct element *tmp = cr -> head;
+    struct element *tmp = malloc(sizeof(struct element*));
+    tmp = cr -> head;
     struct compte_rendu_shm *cr_shm;
     struct restaurant *restaurant = restaurant_map();
 
@@ -270,17 +286,20 @@ void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
     if (sem_init(&cr_shm -> ack_police, 1, 0) == -1)
         raler("sem_init ack_police", 1);
 
+    printf(" ETAT De LA SALLE AVANT COPIAGE DANS SHM : \n");
+    affiche_salle(salle, nb_tab);
     printf("Ecriture du compte rendu \n");
     //Ecriture compte rendu à la police
     cr_shm -> taille = octets_cr;
     cr_shm -> nb_grp = cr -> nb_grp;
     cr_shm -> nb_table = nb_tab;
+    printf("Tables\n");
     for (i = 0; i < nb_tab; i++)
     {
         cr_shm -> liste_elements[i].type = 1;
         cr_shm -> liste_elements[i].nb_conv = salle[i].nb_conv;
         for (j = 0; j < salle[i].nb_conv; j++)
-        {
+        {   
             strncpy(cr_shm -> liste_elements[i].noms[j]
                         , salle[i].liste_conv[j], 10);
             cr_shm -> liste_elements[i].noms[j][10] = '\0'; //securité
@@ -288,10 +307,12 @@ void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
     }
 
     i = 0;
+    printf("Groupes\n");
     while(tmp)
     {
         cr_shm -> liste_elements[nb_tab + i].type = 0;
         cr_shm -> liste_elements[nb_tab + i].nb_conv = tmp -> nb_conv;
+        printf("for\n");
         for (j = 0; j < tmp -> nb_conv; j++)
         {
             strncpy(cr_shm -> liste_elements[nb_tab + i].noms[j]
@@ -325,23 +346,78 @@ void transmet_police(struct table *salle, struct compte_rendu *cr, int nb_tab)
         raler("shm_unlink", 1);    
 }
 
-void ajout_groupe_servi(struct compte_rendu *cr, struct table t)
+void nettoyage_tables(struct table *salle, int nb_table, struct restaurant *r)
 {
-    int i;
-    struct element *elt = malloc(sizeof(struct element));
-    elt -> nb_conv = t.nb_conv;
-    elt -> next = NULL;
-    printf("DEBUT FOR on recopie %s\n", t.liste_conv[0]);
-    for (i = 0; i < t.nb_conv; i++)
+    int i, test_val;
+
+    for (i = 0; i < nb_table; i++)
     {
-        strncpy(elt -> noms[i], t.liste_conv[i], 10);
-        elt -> noms[i][10] = '\0'; //sécurité
-        printf("%s a bien été recopié\n", elt -> noms[i]);
+        if (sem_getvalue(&r -> fin_repas[i], &test_val) == -1)
+            raler("sem_getvalue nettoyage", 1);
+
+        if(salle[i].nb_conv != 0 
+                && salle[i].nb_conv == salle[i].nb_conv_attendus
+                && !(test_val < 0))
+        {
+            printf("Nettoyage table %d\n", i);
+            salle[i].nb_conv = 0;
+            salle[i].nb_conv_attendus = 0;
+        }
     }
 
+
+}
+
+void afficher_cahier(struct cahier_rappel *cr)
+{
+    struct element *tmp = malloc(sizeof(struct element*));
+    tmp = cr -> head;
+    printf("AFFICHAGE CAHIER, nb grp : %d\n", cr -> nb_grp);
+    while(tmp){
+            printf("groupe (%d) : ", tmp -> nb_conv);
+            for (int i = 0; i < tmp -> nb_conv; i++)
+                printf(" %s", tmp -> noms[i]);
+            printf("\n");
+            tmp = tmp -> next;
+        }
+    printf("FIN AFFICHAGE CAHIER\n");
+}
+
+struct cahier_rappel *init_cahier()
+{
+    struct cahier_rappel *cr= malloc(sizeof(struct cahier_rappel*));
+
+    if (cr == NULL)
+        raler("malloc init cahier", 1);
+
+    cr -> nb_grp = 0;
+    cr -> head = NULL;
+
+    return cr;
+}
+
+void insert_cahier(struct cahier_rappel* cr, struct table t)
+{   
+    int i;
+    struct element *new = malloc(sizeof(struct element*));
+    new -> next = malloc(sizeof(struct element*));
+    if(new == NULL || new -> next == NULL)
+        raler("malloc insert cahier", 1);
+
+    
+    for(i = 0; i < t.nb_conv; i++)
+    {
+        printf("on doit insérer : %s\n", t.liste_conv[0]);
+        strncpy(new -> noms[i], t.liste_conv[i], 10);
+        new -> noms[i][10] = '\0';
+        printf("%s a été inséré avec succès\n", new -> noms[0]);
+    }
+
+    new -> nb_conv = t.nb_conv;
+    new -> next = cr -> head;  
+    cr -> head = new;
+    
     cr -> nb_grp++;
-    cr -> tail -> next = elt;//printf("2\n");
-    cr -> tail = elt;//printf("3\n");
 }
 
 int main(int argc, char *argv[])
@@ -353,7 +429,7 @@ int main(int argc, char *argv[])
     char *endptr, *str;
     struct restaurant *m_rest;
     struct table *salle;
-    struct compte_rendu *cahier_rappel;
+    struct cahier_rappel *cahier_rappel;
 
     /**************************************************************************
      *                          CHECK DES ARGUMENTS                           *
@@ -420,10 +496,8 @@ int main(int argc, char *argv[])
      *************************************************************************/ 
 
     // Création cahier rappel
-    cahier_rappel = malloc(sizeof(struct compte_rendu));
-    cahier_rappel -> nb_grp = 0;
-    cahier_rappel -> head = malloc(sizeof(struct element));
-    cahier_rappel -> tail = malloc(sizeof(struct element));
+    cahier_rappel = malloc(sizeof(struct cahier_rappel*));
+    cahier_rappel = init_cahier();
 
     // Allocation salle
     salle = malloc(nb_table * sizeof(struct table));
@@ -462,20 +536,6 @@ int main(int argc, char *argv[])
     while (!test_couvrefeu)
     {
         /**********************************************************************
-         *                 NETTOYAGE DES TABLES VIDES                         *
-         *********************************************************************/
-        for (i = 0; i < nb_table; i++)
-        {
-            if (sem_getvalue(&m_rest -> fin_repas[i], &test_convive) == -1)
-                raler("sem_getvalue", 1);
-            if (test_convive == 0 && salle[i].nb_conv != 0)
-            {
-                salle[i].nb_conv = 0;
-                salle[i].nb_conv_attendus = 0;
-            }
-        }
-
-        /**********************************************************************
          *                      CHECK CONVIVE ATTEND                          *
          *********************************************************************/
         if (sem_getvalue(&m_rest -> serveur_dispo, &test_convive) == -1)
@@ -483,26 +543,26 @@ int main(int argc, char *argv[])
 
         if (test_convive < 1)
         {
-            printf("COUVRE FEU\n");
-
             if (sem_post(&m_rest -> serveur_dispo) == -1)
                 raler("sem_post serveur_dispo", 1);
         
             if (sem_wait(&m_rest -> requete_ecrite) == -1)
                 raler("sem_wait requete_ecrite", 1);
 
-            printf("nom convive : %s\nnom chef : %s\ntaille groupe : %d\n"
+            printf("\n\n\n\nArrivée de : %s, Chef : %s, Taille grp : %d\n"
                     , m_rest -> req_conv.nom_convive
                     , m_rest -> req_conv.nom_chef
                     , m_rest -> req_conv.taille_grp);
             
+            
+            nettoyage_tables(salle, nb_table, m_rest);
             tmp = -1;
             taille_tmp = 7;
             demarrer_table = 0;
             // si c'est un chef cherche la table qui va bien
             if ((m_rest -> req_conv.taille_grp != -1) && !refouler)
             {
-                printf("C'EST LE CHEF\n");
+                //printf("C'EST LE CHEF\n");
                 for (i = 0; i < nb_table; i++)
                 {
                     if(salle[i].nb_conv == 0 // dispo && taille && + optimisée
@@ -528,12 +588,14 @@ int main(int argc, char *argv[])
             // si c'est pas un chef, cherche la table du chef
             else if (!refouler)
             {
-                printf("C'EST PAS LE CHEF\n");
+                //printf("C'EST PAS LE CHEF\n");
                 for (i = 0; i < nb_table; i++)
                 {
                     if (strncmp(salle[i].liste_conv[0]
                             , m_rest -> req_conv.nom_chef, 10) == 0)
                     {
+                        //printf("chef trouvé\n");
+                        //printf("actuellement à la table : %d\ntaille de la table : %d\nnb de conv attendus : %d\n", salle[i].nb_conv, salle[i].taille, salle[i].nb_conv_attendus);
                         if (salle[i].nb_conv == salle[i].taille
                             || salle[i].nb_conv == salle[i].nb_conv_attendus)
                             tmp = -1;
@@ -542,7 +604,7 @@ int main(int argc, char *argv[])
                         break;
                     }
                 }
-
+                //printf(" TMP = %d\n", tmp);
                 if (tmp != -1)
                 {
 
@@ -562,9 +624,13 @@ int main(int argc, char *argv[])
             {
                 m_rest -> reponse_serv = tmp; 
                 if (salle[tmp].nb_conv == salle[tmp].nb_conv_attendus)
+                {
                     demarrer_table = 1;
-                printf("AJOUT AU CAHIER\n");
-                ajout_groupe_servi(cahier_rappel, salle[tmp]);
+                    printf("Ajout au cahier et démarrage table\n");
+                    insert_cahier(cahier_rappel, salle[tmp]);
+                    afficher_cahier(cahier_rappel);
+                }
+
             }
             
 
@@ -584,7 +650,7 @@ int main(int argc, char *argv[])
             {
                 nb_groupes_servis++;
                 nb_convives_servis += salle[tmp].nb_conv;
-                printf("JE DEMARRE TABLE\n");
+                //printf("JE DEMARRE TABLE\n");
                 switch(fork())
                 {
                     case -1 :
@@ -638,7 +704,8 @@ int main(int argc, char *argv[])
                     nb_groupes_servis++;
                     nb_convives_servis += salle[i].nb_conv;
 
-                    ajout_groupe_servi(cahier_rappel, salle[i]);
+                    insert_cahier(cahier_rappel, salle[i]);
+                    afficher_cahier(cahier_rappel);
 
                     printf("JE DEMARRE TABLE CAR COUVRE FEU APPROCHE\n");
                     switch(fork())
