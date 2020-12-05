@@ -18,7 +18,6 @@ int main(int argc, char const *argv[])
 
     restaurant = restaurant_map();
 
-    // Rentre si restaurant ouvert (nomalement, oui)
     if (sem_wait(&restaurant -> crit_ouvert) == -1)
         raler("sem_wait crit_ouvert", 1);
 
@@ -32,7 +31,6 @@ int main(int argc, char const *argv[])
         raler("sem_post crit_ouvert", 1);
 
 
-    printf("bonjour, controle de police\n");
     // Signale sa présence
     if (sem_post(&restaurant -> police_presente) == -1)
         raler("sem_post police_presente", 1);
@@ -42,7 +40,7 @@ int main(int argc, char const *argv[])
         raler("sem_wait compte_rendu_pret", 1);
 
 
-    // Affiche compte rendu
+    // Affiche "instantané"
     cr = compte_rendu_map();
 
     for (i = 0; i < cr -> nb_table; i++)
@@ -58,6 +56,7 @@ int main(int argc, char const *argv[])
         printf("\n");
     }
 
+    // Affiche cahier de rappels
     printf("\ncahier de rappels :\n");
     k = cr -> nb_table + 1;
     for (i = cr -> nb_table; i < cr -> nb_grp + cr -> nb_table; i++)
@@ -73,8 +72,7 @@ int main(int argc, char const *argv[])
     if (sem_post(&cr -> ack_police) == -1)
         raler("sem_post ack_police", 1);
 
-
-    printf("j'ai bien controlé, je vous laisse...\n");
+    // Termine
     restaurant_unmap(restaurant);
     compte_rendu_unmap(cr);
     return EXIT_SUCCESS;

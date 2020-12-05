@@ -12,10 +12,12 @@ void raler(const char* msg, int sys_error)
     if (fflush(stderr) == EOF)
         raler("fflush", 1);
 
+    shm_unlink(NOM_COMPTE_RENDU);
     shm_unlink(NOM_RESTAURANT);
 
     exit(EXIT_FAILURE);
 }
+
 
 /** Affiche un message de debugage immédiatement.
 
@@ -46,6 +48,7 @@ void print_debug(int niveau, char *msg)
 
     return;
 }
+
 
 /** Projection en mémoire du segment de mémoire partagée.
 
@@ -93,15 +96,15 @@ void restaurant_unmap(struct restaurant * restaurant)
 }
 
 
+/** Projection en mémoire du segment de mémoire partagée.
 
+    Le segment de nom #NOM_COMPTE_RENDU est projeté en mémoire, et devient
+    accessible en lecture/écriture via le pointeur fourni en valeur de
+    retour. Le segment est partagé avec tous les autres processus qui
+    le projettent également en mémoire.
 
-
-
-
-
-
-
-
+    \returns L'adresse du segment existant, projeté en mémoire
+*/
 struct compte_rendu_shm *compte_rendu_map()
 {
     struct stat shared_file;
@@ -121,6 +124,16 @@ struct compte_rendu_shm *compte_rendu_map()
     return cr;
 }
 
+
+/** Suppression de la projection en mémoire du segment de mémoire partagée.
+
+    Après appel de cette fonction, le segment de mémoire n'est plus
+    accessible. Le contenu du segment n'est pas affecté par un appel à
+    cette fonction.
+
+    \param restaurant L'adresse du début de la projection 
+    \returns Cette fonction ne renvoie rien.
+*/
 void compte_rendu_unmap(struct compte_rendu_shm * cr)
 {
     if (munmap(cr, cr -> taille) == -1)

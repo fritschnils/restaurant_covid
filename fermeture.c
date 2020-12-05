@@ -15,7 +15,6 @@ int main(int argc, char const *argv[])
 
     m_rest = restaurant_map();
 
-
     if (sem_wait(&m_rest -> crit_ouvert) == -1)
         raler("sem_wait crit_ouvert", 1);
 
@@ -27,16 +26,11 @@ int main(int argc, char const *argv[])
         raler("fermeture alors que restaurant fermé ./fermeture", 0);
     }
 
-    printf("oe\n");
     if (sem_post(&m_rest -> crit_ouvert) == -1)
         raler("sem_post crit_ouvert", 1);
 
     if (sem_post(&m_rest -> couvre_feu) == -1)
         raler("sem_post crit_ouvert", 1);
-
-
-
-
 
     restaurant_unmap(m_rest);
     return EXIT_SUCCESS;

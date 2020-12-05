@@ -11,13 +11,11 @@ void usage()
 
 void ecrit_requete(struct requete_convive *conv, struct requete_convive *dest)
 {
-    strncpy(dest -> nom_convive, conv -> nom_convive, 10);
-    dest -> nom_convive[10] = '\0'; // sécurité
+    strncpy(dest -> nom_convive, conv -> nom_convive, 11);
     
     if(conv -> taille_grp == -1)
     {
-        strncpy(dest -> nom_chef, conv -> nom_chef, 10);
-        dest -> nom_chef[10] = '\0'; // sécurité
+        strncpy(dest -> nom_chef, conv -> nom_chef, 11);
         dest -> taille_grp = -1;    
     }
     else
@@ -69,26 +67,18 @@ int main(int argc, char *argv[])
     }
     else
     {
-        strncpy(s_conv.nom_chef, argv[2], 10);
-        s_conv.nom_chef[10] = '\0'; // sécurité
+        strncpy(s_conv.nom_chef, argv[2], 11);
         s_conv.taille_grp = -1; 
     }
     
-    strncpy(s_conv.nom_convive, argv[1], 10);
-    s_conv.nom_convive[10] = '\0'; // sécurité
+    strncpy(s_conv.nom_convive, argv[1], 11);
 
 
 
     // FIN TESTS ARGS --------------------------------------------------------
-    
-
-
-    printf("nom convive : %s\nnom chef : %s\ntaille groupe : %d\n"
-                , s_conv.nom_convive, s_conv.nom_chef, s_conv.taille_grp);
 
     m_rest = restaurant_map();
 
-    //rentre si restaurant ouvert
     if (sem_wait(&m_rest -> crit_ouvert) == -1)
         raler("sem_wait crit_ouvert", 1);
 
@@ -103,28 +93,21 @@ int main(int argc, char *argv[])
     if (sem_post(&m_rest -> crit_ouvert) == -1)
         raler("sem_post crit_ouvert", 1);
 
-    printf("ATT SERVEUR\n");
-
-    //print_debug(1, "convive rentré");
-
-    //attend serveur
+    // Attend serveur 
     if (sem_wait(&m_rest -> serveur_dispo) == -1)
         raler("sem_wait crit_ouvert", 1);
 
+    // Ecrit requete puis prévient serveur
     ecrit_requete(&s_conv, &m_rest -> req_conv);
-
-    //print_debug(1, "requete ecrite");
     
-    //previent serveur
     if (sem_post(&m_rest -> requete_ecrite) == -1)
         raler("sem_post requete_ecrite", 1);
 
-    printf("ATT REPONSE SERVEUR\n");
-    //attend reponse serveur
+    // Attend reponse serveur
     if (sem_wait(&m_rest -> reponse_serveur) == -1)
         raler("sem_wait reponse_serveur", 1);
 
-    //traite reponse : s'installe / repart
+    // Traite reponse : s'installe / repart et envoi un ack
     printf("Bonjour %s vous avez la table %d\n"
             , m_rest -> req_conv.nom_convive, m_rest -> reponse_serv);
     rep = m_rest -> reponse_serv;
@@ -132,15 +115,15 @@ int main(int argc, char *argv[])
     if (sem_post(&m_rest -> ack_convive) == -1)
         raler("sem_post ack_convive", 1);
     
-    printf("REPONSE SERVEUR : %d\n", rep);
-    if (rep == -1) // refoulé
+    if (rep == -1)
         return EXIT_SUCCESS;
-    printf("ATT FIN REPAS\n");
-    // attend fin du repas
+
+    // Attend fin du repas
     if (sem_wait(&m_rest -> fin_repas[rep]) == -1)
         raler("sem_wait reponse_serveur", 1);
 
     restaurant_unmap(m_rest);
+
     return EXIT_SUCCESS;
 }
 
