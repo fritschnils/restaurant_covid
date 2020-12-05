@@ -1,0 +1,277 @@
+============================================================
+==> commandes exécutées
++ REPAS=400
++ INTERVALLE=50
++ init_chrono
++ [ ! -x ./chrono ]
++ debut_restaurant 400 5 4 2
++ : -> debut_restaurant
++ [ 4 -lt 2 ]
++ local duree_repas=400
++ shift
++ local tables=5 4 2
++ islinux
++ uname
++ [ xLinux = xLinux ]
++ ls /dev/shm
++ echo État initial des shm
+État initial des shm
++ cat /tmp/test-190-58403.m1
++ PID_R=58410
++ msleep 40
++ [ 1 != 1 ]
++ local ms=40
++ ./restaurant 400 5 4 2
++ mstos 40
++ [ 1 != 1 ]
++ local ms=40
++ echo scale=5;40/1000
++ bc
++ sleep .04000
++ ps_existe 58410 Le restaurateur n'est plus là
++ [ 2 != 2 ]
++ local pid=58410 msg=Le restaurateur n'est plus là
++ kill -0 58410
++ islinux
++ uname
++ [ xLinux = xLinux ]
++ ls /dev/shm
++ echo État des shm après création
+État des shm après création
++ cat /tmp/test-190-58403.m2
+leViandard
++ cmp -s /tmp/test-190-58403.m1 /tmp/test-190-58403.m2
++ : <- debut_restaurant
++ d=500
++ PID_CA=58419
++ msleep 50
++ [ 1 != 1 ]
++ local ms=50
++ duree_convive A 3 460 540
++ [ 4 != 4 ]
++ local convive=A arg2=3 min_ms=460 max_ms=540
++ mstos 50
++ [ 1 != 1 ]
++ local ms=50
++ bc
++ subsh A
++ [ 1 != 1 ]
++ local nom=A
++ SUBSH=true
++ exec
++ echo scale=5;50/1000
++ sleep .05000
++ d=450
++ PID_CB=58427
++ msleep 50
++ [ 1 != 1 ]
++ + duree_convivelocal B ms=50 A
+ 410 490
++ [ 4 != 4 ]
++ local convive=B arg2=A min_ms=410 max_ms=490
++ mstos 50
++ subsh+  B[
+ 1 != 1 ]
++ + [local 1 ms=50 !=
+ 1 ]
++ local nom=B
++ SUBSH=true
++ exec
++ echo scale=5;50/1000
++ bc
++ sleep .05000
++ d=400
++ duree_convive C A 360 440
++ [ 4 != 4 ]
++ local convive=C arg2=A min_ms=360 max_ms=440
++ subsh C
++ [ 1 != 1 ]
++ local nom=C
++ SUBSH=true
++ exec
++ msleep 40
++ [ 1 != 1 ]
++ local ms=40
++ mstos 40
++ [ 1 != 1 ]
++ local ms=40
++ echo scale=5;40/1000
++ bc
++ sleep .04000
++ police_puis_fermeture_restaurant
++ : -> police_puis_fermeture
++ [ 0 != 0 ]
++ ./police
++ fermeture_restaurant
++ : -> fermeture_restaurant
++ [ 0 != 0 ]
++ PID_F=58447
++ msleep 40
++ [ 1 != 1 ]
++ local ms=40
++ ./fermeture
++ mstos 40
++ [ 1 != 1 ]
++ local ms=40
++ echo+ bc
+ scale=5;40/1000
++ sleep .04000
++ ps_termine 58447 'fermeture' aurait dû se terminer rapidement
++ [ 2 != 2 ]
++ local pid=58447 msg='fermeture' aurait dû se terminer rapidement
++ kill -0 58447
++ : <- fermeture_restaurant
++ : <- police_puis_fermeture
++ fin_restaurant 3 1
++ : -> fin_restaurant
++ [ 2 != 2 ]
++ local nc=3 ng=1
++ ps_termine 58410 Le restaurateur n'a pas terminé
++ [ 2 != 2 ]
++ local pid=58410 msg=Le restaurateur n'a pas terminé
++ kill -0 58410
++ wait 58410
++ islinux
++ uname
++ [ xLinux = xLinux ]
++ ls /dev/shm
++ echo État des shm à la fin
+État des shm à la fin
++ cat /tmp/test-190-58403.m2
++ cmp -s /tmp/test-190-58403.m1 /tmp/test-190-58403.m2
++ grep -q 3 conv /tmp/test-190-58403.r
++ grep -q 1 groupe /tmp/test-190-58403.r
++ : <- fin_restaurant
++ wait 58419
++ wait 58427
++ grep -iq table 1 /tmp/test-190-58403.cA
++ grep -iq table 1 /tmp/test-190-58403.cB
++ grep -iq table 1 /tmp/test-190-58403.cC
++ code_retour_convive_ok A Code retour A invalide
++ [ 2 != 2 ]
++ local convive=A msg=Code retour A invalide
++ sed -n s/^code retour=//p /tmp/test-190-58403.cA
++ local r=0
++ [ 0 = 0 ]
++ code_retour_convive_ok B Code retour B invalide
++ [ 2 != 2 ]
++ local convive=B msg=Code retour B invalide
++ sed -n s/^code retour=//p /tmp/test-190-58403.cB
++ local r=0
++ [ 0 = 0 ]
++ code_retour_convive_ok C Code retour C invalide
++ [ 2 != 2 ]
++ local convive=C msg=Code retour C invalide
++ sed -n s/^code retour=//p /tmp/test-190-58403.cC
++ local r=0
++ [ 0 = 0 ]
++ logs_aux
++ set +x
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.cA
+Bonjour A vous avez la table 1
+code retour=0
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.cB
+Bonjour B vous avez la table 1
+code retour=0
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.cC
+Bonjour C vous avez la table 1
+code retour=0
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.f
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.m1
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.m2
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.p
+Table 0 : (vide)
+Table 1 : A B C
+Table 2 : (vide)
+
+cahier de rappels :
+Groupe 4 : A B C
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.r
+initialisation
+init_cahier
+allocation salle
+creation et ouverture resto
+creation restaurant
+ouverture_fermeture_restaurant
+debut boucle
+cpt_dispo
+cpt_dispo
+cpt_dispo
+insert_cahier
+afficher_cahier
+groupe (3) :  A B C
+lancer_chrono
+ajuster_tps
+initialisation
+init_cahier
+allocation salle
+creation et ouverture resto
+creation restaurant
+ouverture_fermeture_restaurant
+debut boucle
+cpt_dispo
+cpt_dispo
+cpt_dispo
+insert_cahier
+afficher_cahier
+groupe (3) :  A B C
+transmet_police
+ouverture_fermeture_restaurant
+3 convives servis dans 1 groupes
+n_wait
+destruction restaurant
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.subsh-A
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211132085.840900
++ ./convive A 3
++ echo code retour=0
++ chrono_stop 460 540 A n'a pas la bonne durée
++ [ 3 != 3 ]
++ local min_ms=460 max_ms=540 msg=A n'a pas la bonne durée
++ ./chrono 1607211132085.840900 460 540
+507.362606 ok
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.subsh-B
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211132138.526025
++ ./convive B A
++ echo code retour=0
++ chrono_stop 410 490 B n'a pas la bonne durée
++ [ 3 != 3 ]
++ local min_ms=410 max_ms=490 msg=B n'a pas la bonne durée
++ ./chrono 1607211132138.526025 410 490
+454.714834 ok
+============================================================
+==> Fichier de log auxiliaire /tmp/test-190-58403.subsh-C
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211132191.079270
++ ./convive C A
++ echo code retour=0
++ chrono_stop 360 440 C n'a pas la bonne durée
++ [ 3 != 3 ]
++ local min_ms=360 max_ms=440 msg=C n'a pas la bonne durée
++ ./chrono 1607211132191.079270 360 440
+401.938503 ok
+============================================================
+==> /dev/shm

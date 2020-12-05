@@ -1,0 +1,240 @@
+============================================================
+==> commandes exécutées
++ REPAS=200
++ INTERVALLE=50
++ debut_restaurant 200 4 2
++ : -> debut_restaurant
++ [ 3 -lt 2 ]
++ local duree_repas=200
++ shift
++ local tables=4 2
++ islinux
++ uname
++ [ xLinux = xLinux ]
++ ls /dev/shm
++ echo État initial des shm
+État initial des shm
++ cat /tmp/test-210-58575.m1
++ PID_R=58582
++ msleep 40
++ [ 1 != 1 ]
++ + local ms=40
+./restaurant 200 4 2
++ mstos 40
++ [ 1 != 1 ]
++ local ms=40
++ echo+  scale=5;40/1000
+bc
++ sleep .04000
++ ps_existe 58582 Le restaurateur n'est plus là
++ [ 2 != 2 ]
++ local pid=58582 msg=Le restaurateur n'est plus là
++ kill -0 58582
++ islinux
++ uname
++ [ xLinux = xLinux ]
++ ls /dev/shm
++ echo État des shm après création
+État des shm après création
++ cat /tmp/test-210-58575.m2
+leViandard
++ cmp -s /tmp/test-210-58575.m1 /tmp/test-210-58575.m2
++ : <- debut_restaurant
++ duree_convive A 1 160 240
++ [ 4 != 4 ]
++ local convive=A arg2=1 min_ms=160 max_ms=240
++ subsh A
++ [ 1 != 1 ]
++ local nom=A
++ SUBSH=true
++ exec
++ d=300
++ PID_CB=58596
++ msleep 50
++ [ 1 != 1 ]
++ + localduree_convive ms=50 B
+ 4 260 340
++ [ 4 != 4 ]
++ local convive=B arg2=4 min_ms=260 max_ms=340
++ mstos 50
++ [ 1 !=+  1 ]
++ subshlocal B ms=50
+
++ [ 1 != 1 ]
++ local nom=B
++ SUBSH=true
++ exec
++ + bc
+echo scale=5;50/1000
++ sleep .05000
++ d=250
++ PID_CC=58604
++ duree_convive C+  B 210 290PID_CD=58605
+
++ msleep 50
++ [ 4 !=+  4[ ] 1
+ != 1 ]+ 
+local convive=C+  arg2=Blocal min_ms=210 ms=50 max_ms=290
+
++ duree_convive D+  2 210 290
+subsh C+ 
+[ 4 != 4 ]
++ + local[ convive=D 1 arg2=2 != min_ms=210 1 max_ms=290 ]
+
++ local nom=C
++ SUBSH=true
++ + exec
++ subsh D
+mstos 50+ [ 1 != 1 ]
++ local nom=D
++ SUBSH=true
+
++ exec
++ [ 1 != 1 ]
++ local ms=50
++ echo scale=5;50/1000
++ bc
++ sleep .05000
++ police_puis_fermeture_restaurant
++ : -> police_puis_fermeture
++ [ 0 != 0 ]
++ ./police
++ fermeture_restaurant
++ : -> fermeture_restaurant
++ [ 0 != 0 ]
++ PID_F=58618
++ msleep 40
++ [ 1 != 1 ]
++ local ms=40
++ ./fermeture
++ mstos 40
++ [ 1 != 1 ]
++ local ms=40
++ echo scale=5;40/1000
++ bc
++ sleep .04000
++ ps_termine 58618 'fermeture' aurait dû se terminer rapidement
++ [ 2 != 2 ]
++ local pid=58618 msg='fermeture' aurait dû se terminer rapidement
++ kill -0 58618
++ : <- fermeture_restaurant
++ : <- police_puis_fermeture
++ msleep 40
++ [ 1 != 1 ]
++ local ms=40
++ mstos 40
++ [ 1 != 1 ]
++ local ms=40
++ + echo scale=5;40/1000
+bc
++ sleep .04000
++ ps_existe 58582 Le restaurant n'aurait pas dû fermer si rapidement
++ [ 2 != 2 ]
++ local pid=58582 msg=Le restaurant n'aurait pas dû fermer si rapidement
++ kill -0 58582
++ ps_existe 58596 B devrait toujours être à table
++ [ 2 != 2 ]
++ local pid=58596 msg=B devrait toujours être à table
++ kill -0 58596
++ ps_existe 58604 C devrait toujours être à table
++ [ 2 != 2 ]
++ local pid=58604 msg=C devrait toujours être à table
++ kill -0 58604
++ fail C devrait toujours être à table
++ set +x
+==> Échec du test 'test-210' sur 'C devrait toujours être à table'.
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.cA
+Bonjour A vous avez la table 1
+code retour=0
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.cB
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.cC
+Bonjour C vous avez la table -1
+code retour=0
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.cD
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.f
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.m1
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.m2
+leViandard
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.p
+Table 0 : B
+Table 1 : D
+
+cahier de rappels :
+Groupe 3 : A
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.r
+initialisation
+init_cahier
+allocation salle
+creation et ouverture resto
+creation restaurant
+ouverture_fermeture_restaurant
+debut boucle
+cpt_dispo
+insert_cahier
+afficher_cahier
+groupe (1) :  A
+lancer_chrono
+ajuster_tps
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.subsh-A
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211133748.319507
++ ./convive A 1
++ echo code retour=0
++ chrono_stop 160 240 A n'a pas la bonne durée
++ [ 3 != 3 ]
++ local min_ms=160 max_ms=240 msg=A n'a pas la bonne durée
++ ./chrono 1607211133748.319507 160 240
+201.925421 ok
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.subsh-B
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211133951.506933
++ ./convive B 4
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.subsh-C
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211134004.185236
++ ./convive C B
++ echo code retour=0
++ chrono_stop 210 290 C n'a pas la bonne durée
++ [ 3 != 3 ]
++ local min_ms=210 max_ms=290 msg=C n'a pas la bonne durée
++ ./chrono 1607211134004.185236 210 290
+durée=2.081318 < 210.000000 (min)
++ fail C n'a pas la bonne durée
++ set +x
+==> Échec du test 'test-210' sur 'C n'a pas la bonne durée'.
+============================================================
+==> Fichier de log auxiliaire /tmp/test-210-58575.subsh-D
++ chrono_start
++ [ 0 != 0 ]
++ init_chrono
++ [ ! -x ./chrono ]
++ ./chrono
++ CHRONO_DEBUT=1607211134004.211840
++ ./convive D 2
+============================================================
+==> /dev/shm
+leViandard

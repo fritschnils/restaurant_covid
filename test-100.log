@@ -1,0 +1,69 @@
+============================================================
+==> commandes exécutées
++ ./restaurant
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant x 10
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10 x
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10x 10
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10 10x
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 0 10
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant -1 10
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10 0
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10 -1
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./restaurant 10 7
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive A
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive A B C
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive A2345678901 B
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive A B2345678901
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive  B
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive A 
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./convive A 10x
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./fermeture 1
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ ./police 1
++ tu
++ grep -q usage:  /tmp/test-100-57824
++ logs_aux
++ set +x
+============================================================
+==> Fichier de log auxiliaire /tmp/test-100-57824
+usage: ./police
+============================================================
+==> /dev/shm
