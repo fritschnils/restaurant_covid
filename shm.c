@@ -12,8 +12,9 @@ void raler(const char* msg, int sys_error)
     if (fflush(stderr) == EOF)
         raler("fflush", 1);
 
-    shm_unlink(NOM_COMPTE_RENDU);
-    shm_unlink(NOM_RESTAURANT);
+
+    //shm_unlink(NOM_COMPTE_RENDU);
+    //shm_unlink(NOM_RESTAURANT);
 
     exit(EXIT_FAILURE);
 }
@@ -21,8 +22,9 @@ void raler(const char* msg, int sys_error)
 
 /** Affiche un message de debugage immédiatement.
 
-    /!\ COMMENTAIRE A COMPLETER /!\
-    
+    Uniquement pour débugger. Affiche sur stdout un message pour
+    savoir quand on a passé une étape. 
+
     \param niveau Le niveau du message de debugage.
     \param msg Le message à afficher.
     \returns Cette fonction ne renvoie rien.
@@ -38,11 +40,10 @@ void print_debug(int niveau, char *msg)
     if ((var_env_value = atoi(var_env_ptr)) == 0)
         return;
 
-    //if(niveau > 1 && niveau > var_env_value)
-    //  return;
-    (void) niveau;
+    if(niveau > 1 && niveau > var_env_value)
+      return;
 
-    printf("-------%s\n", msg);
+    printf("------- %s\n", msg);
     if (fflush(stdout) == EOF)
         raler("fflush", 1);
 

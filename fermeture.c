@@ -12,7 +12,6 @@ int main(int argc, char const *argv[])
     }
     // FIN TESTS ARGS --------------------------------------------------------
     
-    printf("fermeture\n")
     m_rest = restaurant_map();
 
     if (sem_wait(&m_rest -> crit_ouvert) == -1)
@@ -29,11 +28,11 @@ int main(int argc, char const *argv[])
     if (sem_post(&m_rest -> crit_ouvert) == -1)
         raler("sem_post crit_ouvert", 1);
 
+    // Annonce couvre feu
     if (sem_post(&m_rest -> couvre_feu) == -1)
         raler("sem_post crit_ouvert", 1);
 
     restaurant_unmap(m_rest);
-    printf("fin fermeture");
     return EXIT_SUCCESS;
 }
 

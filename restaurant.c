@@ -26,7 +26,6 @@ void usage()
 */
 struct restaurant *creation_restaurant(int nb_table)
 {   
-    printf("creation restaurant\n");
     int fd, i;
     struct restaurant *m_restaurant;
     ssize_t octets_rest = SIZE_RESTAURANT(nb_table);
@@ -99,7 +98,6 @@ struct restaurant *creation_restaurant(int nb_table)
 */
 void destruction_restaurant(struct restaurant *restaurant, int nb_table)
 {
-    printf("destruction restaurant\n");
     int i;
 
     if (sem_wait(&restaurant -> crit_ouvert) == -1)
@@ -163,7 +161,6 @@ void destruction_restaurant(struct restaurant *restaurant, int nb_table)
 */
 void ouverture_fermeture_restaurant(int mode)
 {
-    printf("ouverture_fermeture_restaurant\n");
     struct restaurant *restaurant = restaurant_map();
 
     if (sem_wait(&restaurant -> crit_ouvert) == -1)
@@ -206,7 +203,6 @@ void ouverture_fermeture_restaurant(int mode)
 */
 struct timespec ajuster_tps(struct timespec t, int n)
 {
-    printf("ajuster_tps\n");
     t.tv_sec += (n/1000000000);
     t.tv_nsec += (n%1000000000);
 
@@ -238,7 +234,6 @@ struct timespec ajuster_tps(struct timespec t, int n)
 */
 void lancer_chrono(int duree_service, int indice, int nb_conv)
 {
-    printf("lancer_chrono\n");
     int i;
     sem_t faux_sem;
     struct timespec time;
@@ -311,7 +306,6 @@ void affiche_salle(struct table *salle, int nb_table)
 */
 void n_wait(int n)
 {
-    printf("n_wait\n");
     int reason;
     int j;
 
@@ -337,7 +331,6 @@ void n_wait(int n)
 */
 void transmet_police(struct table *salle, struct cahier_rappel *cr, int nb_tab)
 {
-    printf("transmet_police\n");
     int i, j, fd, nb_elem = nb_tab + cr -> nb_grp;
     ssize_t octets_cr = SIZE_COMPTE_RENDU(nb_elem);
     struct element *tmp = malloc(sizeof(struct element*));
@@ -424,7 +417,6 @@ void transmet_police(struct table *salle, struct cahier_rappel *cr, int nb_tab)
 */
 void nettoyage_tables(struct table *salle, int nb_table, struct restaurant *r)
 {
-    printf("nettoyage_tables\n");
     int i, test_val;
 
     for (i = 0; i < nb_table; i++)
@@ -452,7 +444,6 @@ void nettoyage_tables(struct table *salle, int nb_table, struct restaurant *r)
 */
 void afficher_cahier(struct cahier_rappel *cr)
 {
-    printf("afficher_cahier\n");
     struct element *tmp = malloc(sizeof(struct element*));
 
     tmp = cr -> head;
@@ -477,7 +468,6 @@ void afficher_cahier(struct cahier_rappel *cr)
 */
 struct cahier_rappel *init_cahier()
 {
-    printf("init_cahier\n");
     struct cahier_rappel *cr= malloc(sizeof(struct cahier_rappel*));
 
     if (cr == NULL)
@@ -501,7 +491,6 @@ struct cahier_rappel *init_cahier()
 */
 void insert_cahier(struct cahier_rappel* cr, struct table t)
 {   
-    printf("insert_cahier\n");
     int i;
     struct element *new = malloc(sizeof(struct element*));
 
@@ -532,7 +521,6 @@ void insert_cahier(struct cahier_rappel* cr, struct table t)
 */
 int cpt_dispo(struct table* salle, int taille_grp, int nb_table)
 {
-    printf("cpt_dispo\n");
     int places = 0, i;
     for (i = 0; i < nb_table; i++)
     {
@@ -546,6 +534,8 @@ int cpt_dispo(struct table* salle, int taille_grp, int nb_table)
 
 int main(int argc, char *argv[])
 {
+        if(fflush(stdout) == EOF)
+        raler("fflush", 1);
     int nb_table = 0, test_convive = 0, test_couvrefeu = 0, i, j, places;
     int tmp, demarrer_table, nb_groupes_servis = 0, nb_convives_servis = 0;
     int taille_tmp, refouler = 0;
@@ -621,7 +611,6 @@ int main(int argc, char *argv[])
     /**************************************************************************
      *                          INITIALISATIONS                               *
      *************************************************************************/ 
-    printf("initialisation\n");
     // Création cahier rappel
     cahier_rappel = malloc(sizeof(struct cahier_rappel*));
     if (cahier_rappel == NULL)
@@ -652,13 +641,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("creation et ouverture resto\n");
     // Création restaurant puis ouverture
     m_rest = creation_restaurant(nb_table);
     ouverture_fermeture_restaurant(1);
 
 
-    printf("debut boucle\n");
     /**************************************************************************
      *                          DEBUT TRAVAILLE                               *
      *************************************************************************/
